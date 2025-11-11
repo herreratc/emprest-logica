@@ -2,14 +2,11 @@ import { useCallback, useEffect, useMemo, useState } from "react";
 import { hasSupabaseAdmin, hasSupabaseConfig, supabase, supabaseAdmin } from "../supabaseClient";
 import type { MutationResult } from "./useSupabaseData";
 
-export type Role = "master" | "gestor" | "financeiro";
-
 export type UserProfile = {
   id: string;
   userId: string | null;
   name: string;
   email: string;
-  role: Role;
   password?: string | null;
   createdAt?: string;
   updatedAt?: string;
@@ -22,7 +19,7 @@ type DbUserProfile = {
   user_id: string | null;
   name: string;
   email: string;
-  role: Role;
+  role?: string | null;
   created_at: string;
   updated_at: string;
 };
@@ -33,7 +30,6 @@ const mockUsers: UserProfile[] = [
     userId: null,
     name: "Ana Souza",
     email: "ana@logica.com",
-    role: "master",
     password: "senha123"
   },
   {
@@ -41,7 +37,6 @@ const mockUsers: UserProfile[] = [
     userId: null,
     name: "Bruno Lima",
     email: "bruno@logica.com",
-    role: "gestor",
     password: "senha123"
   },
   {
@@ -49,7 +44,6 @@ const mockUsers: UserProfile[] = [
     userId: null,
     name: "Carla Dias",
     email: "carla@logica.com",
-    role: "financeiro",
     password: "senha123"
   }
 ];
@@ -69,7 +63,6 @@ const mapUserFromDb = (record: DbUserProfile): UserProfile => ({
   userId: record.user_id,
   name: record.name,
   email: record.email,
-  role: record.role,
   password: null,
   createdAt: record.created_at,
   updatedAt: record.updated_at
@@ -80,8 +73,7 @@ const mapUserToDb = (input: UpsertUserProfileInput): Record<string, unknown> => 
     id: input.id,
     user_id: input.userId,
     name: input.name,
-    email: input.email,
-    role: input.role
+    email: input.email
   };
 
   if (!payload.id) {
@@ -100,6 +92,7 @@ export type SupabaseUsersState = {
   loading: boolean;
   error: string | null;
   isUsingSupabase: boolean;
+  canManagePasswords: boolean;
   refresh: () => Promise<void>;
   saveUser: (input: UpsertUserProfileInput) => Promise<MutationResult<UserProfile>>;
   deleteUser: (profile: UserProfile) => Promise<MutationResult<null>>;
@@ -147,43 +140,86 @@ export function useSupabaseUsers(): SupabaseUsersState {
 
   const saveUser = useCallback(
     async (input: UpsertUserProfileInput): Promise<MutationResult<UserProfile>> => {
-      const ensureUserId = async () => {
-        if (!hasSupabaseAdmin || !supabaseAdmin) {
-          return input.userId ?? null;
+      const normalizedName = input.name.trim();
+      const normalizedEmail = input.email.trim().toLowerCase();
+      const normalizedPassword =
+        input.password === undefined
+          ? undefined
+          : input.password === null
+          ? null
+          : input.password.trim();
+
+      if (!normalizedName || !normalizedEmail) {
+        return { success: false, error: "Nome e e-mail são obrigatórios." };
+      }
+
+      if (!input.id && (!normalizedPassword || normalizedPassword.length < 6)) {
+        return { success: false, error: "Defina uma senha com pelo menos 6 caracteres." };
+      }
+
+      const sanitizedInput: UpsertUserProfileInput = {
+        ...input,
+        name: normalizedName,
+        email: normalizedEmail,
+        password: normalizedPassword
+      };
+
+      if (hasClient && supabase && !hasSupabaseAdmin) {
+        if (!sanitizedInput.id) {
+          return {
+            success: false,
+            error: "Configure a chave service role do Supabase para cadastrar usuários com senha."
+          };
         }
 
-        if (input.userId) {
+        if (sanitizedInput.password) {
+          return {
+            success: false,
+            error: "Configure a chave service role do Supabase para atualizar a senha do usuário."
+          };
+        }
+      }
+
+      const ensureUserId = async () => {
+        if (!hasSupabaseAdmin || !supabaseAdmin) {
+          return sanitizedInput.userId ?? null;
+        }
+
+        if (sanitizedInput.userId) {
           const payload: {
             email?: string;
             password?: string;
             user_metadata?: Record<string, unknown>;
           } = {
-            email: input.email,
-            user_metadata: { name: input.name }
+            email: sanitizedInput.email,
+            user_metadata: { name: sanitizedInput.name }
           };
 
-          if (input.password) {
-            payload.password = input.password;
+          if (sanitizedInput.password) {
+            payload.password = sanitizedInput.password;
           }
 
-          const { error: updateError } = await supabaseAdmin.auth.admin.updateUserById(input.userId, payload);
+          const { error: updateError } = await supabaseAdmin.auth.admin.updateUserById(
+            sanitizedInput.userId,
+            payload
+          );
 
           if (updateError) {
             throw new Error(updateError.message);
           }
 
-          return input.userId;
+          return sanitizedInput.userId;
         }
 
-        if (!input.password) {
+        if (!sanitizedInput.password) {
           return null;
         }
 
         const { data, error: createError } = await supabaseAdmin.auth.admin.createUser({
-          email: input.email,
-          password: input.password,
+          email: sanitizedInput.email,
+          password: sanitizedInput.password,
           email_confirm: true,
-          user_metadata: { name: input.name }
+          user_metadata: { name: sanitizedInput.name }
         });
 
         if (createError) {
@@ -194,17 +230,16 @@ export function useSupabaseUsers(): SupabaseUsersState {
       };
 
       try {
-        const previous = input.id ? users.find((user) => user.id === input.id) : undefined;
+        const previous = sanitizedInput.id ? users.find((user) => user.id === sanitizedInput.id) : undefined;
         const resolvedPassword =
-          input.password !== undefined ? input.password ?? null : previous?.password ?? null;
+          sanitizedInput.password !== undefined ? sanitizedInput.password ?? null : previous?.password ?? null;
         const userId = await ensureUserId();
 
         const baseUser: UserProfile = {
-          id: input.id ?? ensureId(),
+          id: sanitizedInput.id ?? ensureId(),
           userId,
-          name: input.name,
-          email: input.email,
-          role: input.role,
+          name: sanitizedInput.name,
+          email: sanitizedInput.email,
           password: hasClient && supabase ? null : resolvedPassword
         };
 
@@ -214,8 +249,8 @@ export function useSupabaseUsers(): SupabaseUsersState {
         }
 
         const payload = mapUserToDb({
-          ...input,
-          id: input.id ?? undefined,
+          ...sanitizedInput,
+          id: sanitizedInput.id ?? undefined,
           userId
         });
 
@@ -276,10 +311,11 @@ export function useSupabaseUsers(): SupabaseUsersState {
       loading,
       error,
       isUsingSupabase: hasClient,
+      canManagePasswords: hasSupabaseAdmin,
       refresh: fetchUsers,
       saveUser,
       deleteUser
     }),
-    [users, loading, error, fetchUsers, saveUser, deleteUser]
+    [users, loading, error, fetchUsers, saveUser, deleteUser, hasSupabaseAdmin]
   );
 }

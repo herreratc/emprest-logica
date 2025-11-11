@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { hasSupabaseConfig, supabase } from "../supabaseClient";
 import {
   companies as mockCompanies,
@@ -202,6 +202,42 @@ const mapInstallmentToDb = (input: UpsertInstallmentInput): Record<string, unkno
   return payload;
 };
 
+const computeInstallmentAutoStatus = (installment: Installment, referenceDate: Date): InstallmentStatus => {
+  if (installment.status === "paga") {
+    return "paga";
+  }
+
+  const [year, month, day] = installment.date.split("-").map(Number);
+  const dueDate = new Date(year, (month ?? 1) - 1, day ?? 1);
+  const startOfToday = new Date(referenceDate.getFullYear(), referenceDate.getMonth(), referenceDate.getDate());
+  const endOfToday = new Date(startOfToday.getTime() + 86_399_999);
+
+  if (dueDate < startOfToday) {
+    return "vencida";
+  }
+
+  if (dueDate <= endOfToday) {
+    return "paga";
+  }
+
+  return "pendente";
+};
+
+const normalizeInstallmentStatuses = (items: Installment[], referenceDate: Date) => {
+  const updates: Installment[] = [];
+  const normalized = items.map((item) => {
+    const nextStatus = computeInstallmentAutoStatus(item, referenceDate);
+    if (nextStatus !== item.status) {
+      const updated = { ...item, status: nextStatus };
+      updates.push(updated);
+      return updated;
+    }
+    return item;
+  });
+
+  return { normalized, updates };
+};
+
 export type SupabaseDataState = {
   companies: Company[];
   loans: Loan[];
@@ -227,6 +263,7 @@ export function useSupabaseData(): SupabaseDataState {
   const [installments, setInstallments] = useState<Installment[]>(hasClient ? [] : mockInstallments);
   const [loading, setLoading] = useState<boolean>(hasClient);
   const [error, setError] = useState<string | null>(null);
+  const statusSyncingRef = useRef(false);
 
   const fetchData = useCallback(async () => {
     if (!hasClient || !supabase) {
@@ -234,7 +271,8 @@ export function useSupabaseData(): SupabaseDataState {
       setLoading(false);
       setCompanies(sortCompanies(mockCompanies));
       setLoans(sortLoans(mockLoans));
-      setInstallments(sortInstallments(mockInstallments));
+      const { normalized } = normalizeInstallmentStatuses(mockInstallments, new Date());
+      setInstallments(sortInstallments(normalized));
       return;
     }
 
@@ -259,9 +297,16 @@ export function useSupabaseData(): SupabaseDataState {
 
       setCompanies(sortCompanies(((companiesResponse.data as DbCompany[]) ?? []).map(mapCompanyFromDb)));
       setLoans(sortLoans(((loansResponse.data as DbLoan[]) ?? []).map(mapLoanFromDb)));
-      setInstallments(
-        sortInstallments(((installmentsResponse.data as DbInstallment[]) ?? []).map(mapInstallmentFromDb))
-      );
+
+      const mappedInstallments = ((installmentsResponse.data as DbInstallment[]) ?? []).map(mapInstallmentFromDb);
+      const { normalized, updates } = normalizeInstallmentStatuses(mappedInstallments, new Date());
+      setInstallments(sortInstallments(normalized));
+
+      if (updates.length > 0) {
+        await supabase
+          .from("installments")
+          .upsert(updates.map((installment) => mapInstallmentToDb({ ...installment })), { onConflict: "id" });
+      }
     } catch (err) {
       const message = err instanceof Error ? err.message : String(err);
       setError(message);
@@ -400,11 +445,19 @@ export function useSupabaseData(): SupabaseDataState {
         interest: input.interest
       };
 
+      const normalizedInstallment = {
+        ...baseInstallment,
+        status: computeInstallmentAutoStatus(baseInstallment, new Date())
+      };
+
       if (!hasClient || !supabase) {
         setInstallments((prev) =>
-          sortInstallments([...(prev.filter((installment) => installment.id !== baseInstallment.id)), baseInstallment])
+          sortInstallments([
+            ...prev.filter((installment) => installment.id !== normalizedInstallment.id),
+            normalizedInstallment
+          ])
         );
-        return { success: true, data: baseInstallment };
+        return { success: true, data: normalizedInstallment };
       }
 
       const payload = mapInstallmentToDb({ ...input, id: input.id ?? undefined });
@@ -420,10 +473,22 @@ export function useSupabaseData(): SupabaseDataState {
       }
 
       const mapped = mapInstallmentFromDb(data as DbInstallment);
+      const autoStatus = computeInstallmentAutoStatus(mapped, new Date());
+      const syncedInstallment = autoStatus === mapped.status ? mapped : { ...mapped, status: autoStatus };
+
+      if (syncedInstallment !== mapped) {
+        await supabase
+          .from("installments")
+          .upsert([mapInstallmentToDb({ ...syncedInstallment })], { onConflict: "id" });
+      }
+
       setInstallments((prev) =>
-        sortInstallments([...(prev.filter((installment) => installment.id !== mapped.id)), mapped])
+        sortInstallments([
+          ...prev.filter((installment) => installment.id !== syncedInstallment.id),
+          syncedInstallment
+        ])
       );
-      return { success: true, data: mapped };
+      return { success: true, data: syncedInstallment };
     },
     []
   );
@@ -450,6 +515,53 @@ export function useSupabaseData(): SupabaseDataState {
     },
     []
   );
+
+  const syncInstallmentStatuses = useCallback(async () => {
+    if (statusSyncingRef.current) {
+      return;
+    }
+
+    statusSyncingRef.current = true;
+    const referenceDate = new Date();
+    let pendingUpdates: Installment[] = [];
+
+    setInstallments((current) => {
+      const { normalized, updates } = normalizeInstallmentStatuses(current, referenceDate);
+      pendingUpdates = updates;
+      if (updates.length === 0) {
+        return current;
+      }
+      return sortInstallments(normalized);
+    });
+
+    if (hasClient && supabase && pendingUpdates.length > 0) {
+      try {
+        await supabase
+          .from("installments")
+          .upsert(pendingUpdates.map((installment) => mapInstallmentToDb({ ...installment })), { onConflict: "id" });
+      } catch (err) {
+        console.error("Falha ao atualizar status das parcelas automaticamente:", err);
+      }
+    }
+
+    statusSyncingRef.current = false;
+  }, []);
+
+  useEffect(() => {
+    if (typeof window === "undefined") {
+      return;
+    }
+
+    void syncInstallmentStatuses();
+
+    const interval = window.setInterval(() => {
+      void syncInstallmentStatuses();
+    }, 60_000);
+
+    return () => {
+      window.clearInterval(interval);
+    };
+  }, [syncInstallmentStatuses]);
 
   const resetData = useCallback(async (): Promise<MutationResult<null>> => {
     const clearState = () => {

@@ -177,7 +177,10 @@ export function LoansView({
 
   const parseNumber = (value: string) => {
     if (!value.trim()) return 0;
-    const numeric = Number(value.replace(/,/g, "."));
+    const usesComma = value.includes(",");
+    const normalized = usesComma ? value.replace(/\./g, "").replace(/,/g, ".") : value;
+    const sanitized = normalized.replace(/\s+/g, "");
+    const numeric = Number(sanitized);
     return Number.isNaN(numeric) ? 0 : numeric;
   };
 

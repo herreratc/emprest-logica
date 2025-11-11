@@ -1,24 +1,19 @@
 import { useEffect, useMemo, useState } from "react";
 import { clsx } from "clsx";
 import { useAuth } from "../auth/AuthProvider";
-import {
-  type Role,
-  type UpsertUserProfileInput,
-  type UserProfile,
-  useSupabaseUsers
-} from "../hooks/useSupabaseUsers";
+import { type UpsertUserProfileInput, type UserProfile, useSupabaseUsers } from "../hooks/useSupabaseUsers";
 
 const inputClass =
   "w-full rounded-xl border border-logica-lilac/40 bg-white px-4 py-2 text-sm text-logica-purple focus:border-logica-purple focus:outline-none";
 
-const DEFAULT_ROLE: Role = "gestor";
 const initialForm = { name: "", email: "", password: "" };
 
 type FeedbackState = { type: "success" | "error"; message: string } | null;
 
 export function UsersView() {
   const { user, signOut, isConfigured } = useAuth();
-  const { users, loading, error, isUsingSupabase, refresh, saveUser, deleteUser } = useSupabaseUsers();
+  const { users, loading, error, isUsingSupabase, canManagePasswords, refresh, saveUser, deleteUser } =
+    useSupabaseUsers();
 
   const [editing, setEditing] = useState<UserProfile | null>(null);
   const [form, setForm] = useState(initialForm);
@@ -55,10 +50,16 @@ export function UsersView() {
     if (isSaving) return;
 
     const trimmedName = form.name.trim();
-    const trimmedEmail = form.email.trim();
+    const trimmedEmail = form.email.trim().toLowerCase();
+    const trimmedPassword = form.password.trim();
 
     if (!trimmedName || !trimmedEmail) {
       setFeedback({ type: "error", message: "Informe nome e e-mail corporativo." });
+      return;
+    }
+
+    if (!editing && trimmedPassword.length < 6) {
+      setFeedback({ type: "error", message: "Defina uma senha com pelo menos 6 caracteres." });
       return;
     }
 
@@ -69,8 +70,7 @@ export function UsersView() {
       ...(editing ? { id: editing.id, userId: editing.userId } : { userId: null }),
       name: trimmedName,
       email: trimmedEmail,
-      role: editing?.role ?? DEFAULT_ROLE,
-      password: form.password ? form.password : undefined
+      password: editing ? (form.password ? trimmedPassword : undefined) : trimmedPassword
     };
 
     const result = await saveUser(payload);
@@ -237,8 +237,14 @@ export function UsersView() {
         </p>
         {isUsingSupabase && (
           <p className="mt-2 text-xs text-logica-lilac">
-            Para definir senhas automaticamente, informe a variável VITE_SUPABASE_SERVICE_ROLE_KEY com a chave service role do
-            seu projeto.
+            {canManagePasswords
+              ? "As senhas cadastradas aqui são sincronizadas imediatamente com o Supabase."
+              : "Cadastros de senha requerem a variável VITE_SUPABASE_SERVICE_ROLE_KEY com a chave service role do seu projeto."}
+          </p>
+        )}
+        {!canManagePasswords && isUsingSupabase && (
+          <p className="mt-1 text-xs text-rose-500">
+            Sem a chave service role do Supabase não é possível criar ou alterar senhas de acesso.
           </p>
         )}
         {feedback && (
@@ -290,6 +296,8 @@ export function UsersView() {
               onChange={(event) => setForm((prev) => ({ ...prev, password: event.target.value }))}
               disabled={isSaving || isDeleting}
               placeholder={editing ? "Deixe em branco para manter" : "Informe uma senha segura"}
+              required={!editing}
+              minLength={6}
             />
           </label>
           <div className="md:col-span-3 flex justify-end gap-3">
