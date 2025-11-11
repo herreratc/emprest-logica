@@ -67,6 +67,17 @@ create table if not exists public.installments (
   constraint installments_unique_sequence unique (loan_id, sequence)
 );
 
+create table if not exists public.user_profiles (
+  id uuid primary key default gen_random_uuid(),
+  user_id uuid references auth.users(id) on delete set null,
+  name text not null,
+  email text not null,
+  role text not null check (role in ('master', 'gestor', 'financeiro')),
+  created_at timestamptz not null default timezone('utc', now()),
+  updated_at timestamptz not null default timezone('utc', now()),
+  constraint user_profiles_email_unique unique (email)
+);
+
 create index if not exists loans_company_id_idx on public.loans (company_id);
 create index if not exists installments_loan_id_idx on public.installments (loan_id);
 create index if not exists loans_status_idx on public.loans (status);
@@ -87,9 +98,15 @@ before update on public.installments
 for each row
 execute function public.set_updated_at();
 
+create trigger user_profiles_set_updated_at
+before update on public.user_profiles
+for each row
+execute function public.set_updated_at();
+
 alter table public.companies enable row level security;
 alter table public.loans enable row level security;
 alter table public.installments enable row level security;
+alter table public.user_profiles enable row level security;
 
 create policy "companies_select_anon" on public.companies
 for select
@@ -114,6 +131,15 @@ for select
 using (true);
 
 create policy "installments_mutate_authenticated" on public.installments
+for all
+using (auth.role() = 'authenticated')
+with check (auth.role() = 'authenticated');
+
+create policy "user_profiles_select_authenticated" on public.user_profiles
+for select
+using (auth.role() = 'authenticated');
+
+create policy "user_profiles_mutate_authenticated" on public.user_profiles
 for all
 using (auth.role() = 'authenticated')
 with check (auth.role() = 'authenticated');
@@ -251,4 +277,17 @@ values
   ('99999999-aaaa-bbbb-cccc-222222222222', '44444444-5555-6666-9777-dddddddddddd', 15, '2024-07-15', 10833.33, 'vencida', 4166.66),
   ('aaaaaaaa-bbbb-cccc-dddd-333333333333', '44444444-5555-6666-9777-dddddddddddd', 16, '2024-08-15', 10833.33, 'pendente', 4000.00),
   ('bbbbbbbb-cccc-dddd-eeee-444444444444', '55555555-6666-7777-9888-eeeeeeeeeeee', 35, '2023-12-05', 7777.78, 'paga', 2777.78)
+on conflict (id) do nothing;
+
+insert into public.user_profiles (
+  id,
+  name,
+  email,
+  role,
+  user_id
+)
+values
+  ('cccccccc-dddd-eeee-ffff-111111111111', 'Ana Souza', 'ana@logica.com', 'master', null),
+  ('dddddddd-eeee-ffff-0000-222222222222', 'Bruno Lima', 'bruno@logica.com', 'gestor', null),
+  ('eeeeeeee-ffff-0000-1111-333333333333', 'Carla Dias', 'carla@logica.com', 'financeiro', null)
 on conflict (id) do nothing;
