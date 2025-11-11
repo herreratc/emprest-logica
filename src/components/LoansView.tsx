@@ -73,6 +73,11 @@ const initialLoanForm: LoanFormState = {
   contractStart: ""
 };
 
+const createInitialForm = (companyId?: string): LoanFormState => ({
+  ...initialLoanForm,
+  ...(companyId ? { companyId } : {})
+});
+
 type FeedbackState = { type: "success" | "error"; message: string } | null;
 
 const inputClass =
@@ -93,6 +98,7 @@ export function LoansView({
   const [feedback, setFeedback] = useState<FeedbackState>(null);
   const [isSaving, setIsSaving] = useState(false);
   const [isDeleting, setIsDeleting] = useState(false);
+  const [isFormVisible, setIsFormVisible] = useState(false);
 
   const toStringValue = (value: number | string | null | undefined) =>
     value === null || value === undefined ? "" : String(value);
@@ -104,12 +110,6 @@ export function LoansView({
   const totalActive = filteredLoans.filter((loan) => loan.status === "ativo").length;
   const totalFinished = filteredLoans.filter((loan) => loan.status === "finalizado").length;
   const totalValue = filteredLoans.reduce((acc, loan) => acc + loan.totalValue, 0);
-
-  useEffect(() => {
-    if (!editing && selectedCompany !== "all") {
-      setForm((prev) => ({ ...prev, companyId: selectedCompany }));
-    }
-  }, [editing, selectedCompany]);
 
   useEffect(() => {
     if (editing) {
@@ -139,21 +139,40 @@ export function LoansView({
         currentDate: editing.currentDate,
         contractStart: editing.contractStart
       });
-    } else {
-      setForm(initialLoanForm);
+      return;
     }
-  }, [editing]);
+
+    if (!isFormVisible) {
+      setForm(createInitialForm());
+      return;
+    }
+
+    setForm((prev) => ({
+      ...prev,
+      companyId: selectedCompany === "all" ? "" : selectedCompany
+    }));
+  }, [editing, isFormVisible, selectedCompany]);
 
   const handleCreate = () => {
     setEditing(null);
-    setForm(initialLoanForm);
+    const defaultCompanyId = selectedCompany === "all" ? undefined : selectedCompany;
+    setForm(createInitialForm(defaultCompanyId));
     setFeedback(null);
+    setIsFormVisible(true);
   };
 
   const handleEdit = (loan: Loan) => {
+    setIsFormVisible(true);
     setEditing(loan);
     onSelectCompany(loan.companyId);
     setFeedback(null);
+  };
+
+  const handleCancel = () => {
+    setEditing(null);
+    setForm(createInitialForm());
+    setFeedback(null);
+    setIsFormVisible(false);
   };
 
   const parseNumber = (value: string) => {
@@ -251,7 +270,8 @@ export function LoansView({
 
     setFeedback({ type: "success", message: "Empréstimo removido com sucesso." });
     setEditing(null);
-    setForm(initialLoanForm);
+    setForm(createInitialForm());
+    setIsFormVisible(false);
     setIsDeleting(false);
   };
 
@@ -372,34 +392,35 @@ export function LoansView({
         </table>
       </section>
 
-      <section className="rounded-2xl border border-logica-purple/20 bg-white/90 p-6 shadow-lg">
-        <h2 className="text-lg font-semibold text-logica-purple">
-          {editing ? `Editar ${editing.reference}` : "Cadastrar novo empréstimo"}
-        </h2>
-        <p className="text-sm text-logica-lilac">
-          {isUsingSupabase
-            ? "As alterações são sincronizadas com a tabela loans do seu projeto Supabase."
-            : "Sem Supabase configurado, as alterações ficam apenas na sessão atual."}
-        </p>
-        {feedback && (
-          <div
-            className={clsx(
-              "mt-4 rounded-xl border px-4 py-3 text-sm",
-              feedback.type === "success"
-                ? "border-emerald-200 bg-emerald-50 text-emerald-700"
-                : "border-red-200 bg-red-50 text-red-700"
-            )}
+      {isFormVisible && (
+        <section className="rounded-2xl border border-logica-purple/20 bg-white/90 p-6 shadow-lg">
+          <h2 className="text-lg font-semibold text-logica-purple">
+            {editing ? `Editar ${editing.reference}` : "Cadastrar novo empréstimo"}
+          </h2>
+          <p className="text-sm text-logica-lilac">
+            {isUsingSupabase
+              ? "As alterações são sincronizadas com a tabela loans do seu projeto Supabase."
+              : "Sem Supabase configurado, as alterações ficam apenas na sessão atual."}
+          </p>
+          {feedback && (
+            <div
+              className={clsx(
+                "mt-4 rounded-xl border px-4 py-3 text-sm",
+                feedback.type === "success"
+                  ? "border-emerald-200 bg-emerald-50 text-emerald-700"
+                  : "border-red-200 bg-red-50 text-red-700"
+              )}
+            >
+              {feedback.message}
+            </div>
+          )}
+          <form
+            className="mt-4 space-y-4"
+            onSubmit={(event) => {
+              event.preventDefault();
+              handleSubmit();
+            }}
           >
-            {feedback.message}
-          </div>
-        )}
-        <form
-          className="mt-4 space-y-4"
-          onSubmit={(event) => {
-            event.preventDefault();
-            handleSubmit();
-          }}
-        >
           <div className="grid gap-4 md:grid-cols-3">
             <label className="text-sm text-logica-purple">
               Empresa
@@ -709,7 +730,7 @@ export function LoansView({
             )}
             <button
               type="button"
-              onClick={handleCreate}
+              onClick={handleCancel}
               className="rounded-full border border-logica-lilac px-4 py-2 text-sm text-logica-purple"
               disabled={isSaving || isDeleting}
             >
@@ -726,8 +747,9 @@ export function LoansView({
               {isSaving ? "Salvando..." : "Salvar alterações"}
             </button>
           </div>
-        </form>
-      </section>
+          </form>
+        </section>
+      )}
 
       {filteredLoans.map((loan) => (
         <section key={loan.id} className="grid gap-4 rounded-2xl border border-logica-purple/20 bg-white/90 p-6 shadow-lg md:grid-cols-2">

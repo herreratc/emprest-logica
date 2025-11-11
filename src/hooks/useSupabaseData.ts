@@ -216,6 +216,7 @@ export type SupabaseDataState = {
   deleteLoan: (loanId: string) => Promise<MutationResult<null>>;
   saveInstallment: (input: UpsertInstallmentInput) => Promise<MutationResult<Installment>>;
   deleteInstallment: (installmentId: string) => Promise<MutationResult<null>>;
+  resetData: () => Promise<MutationResult<null>>;
 };
 
 const hasClient = hasSupabaseConfig && Boolean(supabase);
@@ -450,6 +451,36 @@ export function useSupabaseData(): SupabaseDataState {
     []
   );
 
+  const resetData = useCallback(async (): Promise<MutationResult<null>> => {
+    const clearState = () => {
+      setCompanies([]);
+      setLoans([]);
+      setInstallments([]);
+    };
+
+    if (!hasClient || !supabase) {
+      clearState();
+      return { success: true, data: null };
+    }
+
+    try {
+      const tables = ["installments", "loans", "companies"] as const;
+
+      for (const table of tables) {
+        const { error } = await supabase.from(table).delete().not("id", "is", null);
+        if (error) {
+          throw error;
+        }
+      }
+
+      clearState();
+      return { success: true, data: null };
+    } catch (error) {
+      const message = error instanceof Error ? error.message : String(error);
+      return { success: false, error: message };
+    }
+  }, []);
+
   return useMemo(
     () => ({
       companies,
@@ -464,7 +495,8 @@ export function useSupabaseData(): SupabaseDataState {
       saveLoan: upsertLoan,
       deleteLoan: removeLoan,
       saveInstallment: upsertInstallment,
-      deleteInstallment: removeInstallment
+      deleteInstallment: removeInstallment,
+      resetData
     }),
     [
       companies,
@@ -478,7 +510,8 @@ export function useSupabaseData(): SupabaseDataState {
       upsertLoan,
       removeLoan,
       upsertInstallment,
-      removeInstallment
+      removeInstallment,
+      resetData
     ]
   );
 }
