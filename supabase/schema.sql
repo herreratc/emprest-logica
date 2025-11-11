@@ -48,7 +48,7 @@ create table if not exists public.loans (
   remaining_installments integer not null default 0,
   amount_paid numeric(16,2) not null default 0,
   amount_to_pay numeric(16,2) not null default 0,
-  current_date date not null,
+  as_of_date date not null,
   contract_start date not null,
   created_at timestamptz not null default timezone('utc', now()),
   updated_at timestamptz not null default timezone('utc', now())
@@ -148,7 +148,7 @@ insert into public.loans (
   remaining_installments,
   amount_paid,
   amount_to_pay,
-  current_date,
+  as_of_date,
   contract_start
 )
 values

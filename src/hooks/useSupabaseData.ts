@@ -51,7 +51,7 @@ type DbLoan = {
   remaining_installments: number | null;
   amount_paid: number | string | null;
   amount_to_pay: number | string | null;
-  current_date: string;
+  as_of_date: string;
   contract_start: string;
 };
 
@@ -134,7 +134,7 @@ const mapLoanFromDb = (record: DbLoan): Loan => ({
   remainingInstallments: record.remaining_installments ?? 0,
   amountPaid: toNumber(record.amount_paid),
   amountToPay: toNumber(record.amount_to_pay),
-  currentDate: record.current_date,
+  currentDate: record.as_of_date,
   contractStart: record.contract_start
 });
 
@@ -163,7 +163,7 @@ const mapLoanToDb = (input: UpsertLoanInput): Record<string, unknown> => {
     remaining_installments: input.remainingInstallments,
     amount_paid: input.amountPaid,
     amount_to_pay: input.amountToPay,
-    current_date: input.currentDate,
+    as_of_date: input.currentDate,
     contract_start: input.contractStart
   };
 
