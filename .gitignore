@@ -1,0 +1,17 @@
+node_modules
+.DS_Store
+dist
+.env
+.env.*
+!.env.example
+.vscode
+.idea
+
+# Logs
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+
+# Editor directories and files
+*.swp
+*.swo

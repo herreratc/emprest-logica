@@ -1,0 +1,33 @@
+<svg width="512" height="512" viewBox="0 0 512 512" xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink">
+  <defs>
+    <radialGradient id="outerGlow" cx="50%" cy="45%" r="55%">
+      <stop offset="0%" stop-color="#ebdcf9" />
+      <stop offset="65%" stop-color="#bc9bbb" />
+      <stop offset="100%" stop-color="#61105c" />
+    </radialGradient>
+    <linearGradient id="ringGradient" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#491a40" />
+      <stop offset="100%" stop-color="#b42a98" />
+    </linearGradient>
+    <path id="bottomArc" d="M96 382a160 160 0 0 0 320 0" />
+  </defs>
+  <g fill="none" fill-rule="evenodd">
+    <circle cx="256" cy="256" r="244" fill="url(#outerGlow)" opacity="0.35" />
+    <circle cx="256" cy="256" r="226" fill="url(#ringGradient)" />
+    <circle cx="256" cy="256" r="188" fill="#ffffff" />
+    <g transform="translate(256 216)">
+      <rect x="-138" y="-124" width="148" height="148" rx="44" fill="#f26d23" transform="rotate(-12)" />
+      <rect x="-18" y="-122" width="148" height="148" rx="44" fill="#f04b9b" transform="rotate(8)" />
+      <rect x="-136" y="-2" width="148" height="148" rx="44" fill="#8c3c97" transform="rotate(8)" />
+      <rect x="-16" y="0" width="148" height="148" rx="44" fill="#83c341" transform="rotate(-12)" />
+    </g>
+    <text x="256" y="336" text-anchor="middle" font-family="'Nunito', 'Segoe UI', sans-serif" font-size="94" font-weight="700" fill="#f37021">
+      logi<tspan fill="#f15a29">ca</tspan>
+    </text>
+    <text font-family="'Nunito', 'Segoe UI', sans-serif" font-size="30" font-weight="600" letter-spacing="5" fill="#ffffff">
+      <textPath xlink:href="#bottomArc" startOffset="50%" text-anchor="middle">
+        O ELO PERFEITO ENTRE A INDÚSTRIA E O VAREJO
+      </textPath>
+    </text>
+  </g>
+</svg>
