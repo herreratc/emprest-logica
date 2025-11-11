@@ -11,7 +11,8 @@ import {
 const inputClass =
   "w-full rounded-xl border border-logica-lilac/40 bg-white px-4 py-2 text-sm text-logica-purple focus:border-logica-purple focus:outline-none";
 
-const initialForm = { name: "", email: "", role: "gestor" as Role };
+const DEFAULT_ROLE: Role = "gestor";
+const initialForm = { name: "", email: "", password: "" };
 
 type FeedbackState = { type: "success" | "error"; message: string } | null;
 
@@ -27,7 +28,7 @@ export function UsersView() {
 
   useEffect(() => {
     if (editing) {
-      setForm({ name: editing.name, email: editing.email, role: editing.role });
+      setForm({ name: editing.name, email: editing.email, password: "" });
     } else {
       setForm(initialForm);
     }
@@ -41,6 +42,7 @@ export function UsersView() {
 
   const handleCreate = () => {
     setEditing(null);
+    setForm(initialForm);
     setFeedback(null);
   };
 
@@ -64,11 +66,11 @@ export function UsersView() {
     setFeedback(null);
 
     const payload: UpsertUserProfileInput = {
-      ...(editing ? { id: editing.id } : {}),
-      userId: editing?.userId ?? null,
+      ...(editing ? { id: editing.id, userId: editing.userId } : { userId: null }),
       name: trimmedName,
       email: trimmedEmail,
-      role: form.role
+      role: editing?.role ?? DEFAULT_ROLE,
+      password: form.password ? form.password : undefined
     };
 
     const result = await saveUser(payload);
@@ -84,6 +86,7 @@ export function UsersView() {
       message: editing ? "Usuário atualizado com sucesso." : "Usuário cadastrado com sucesso."
     });
     setEditing(result.data);
+    setForm((prev) => ({ ...prev, password: "" }));
     setIsSaving(false);
   };
 
@@ -95,7 +98,7 @@ export function UsersView() {
     setIsDeleting(true);
     setFeedback(null);
 
-    const result = await deleteUser(profile.id);
+    const result = await deleteUser(profile);
 
     if (!result.success) {
       setFeedback({ type: "error", message: result.error });
@@ -178,7 +181,6 @@ export function UsersView() {
                 <tr>
                   <th className="px-3 py-2 text-left font-semibold">Nome</th>
                   <th className="px-3 py-2 text-left font-semibold">E-mail</th>
-                  <th className="px-3 py-2 text-left font-semibold">Perfil</th>
                   <th className="px-3 py-2 text-left font-semibold">Ações</th>
                 </tr>
               </thead>
@@ -187,7 +189,6 @@ export function UsersView() {
                   <tr key={profile.id} className="hover:bg-logica-light-lilac/40">
                     <td className="px-3 py-2">{profile.name}</td>
                     <td className="px-3 py-2">{profile.email}</td>
-                    <td className="px-3 py-2 capitalize">{profile.role}</td>
                     <td className="px-3 py-2">
                       <div className="flex gap-2">
                         <button
@@ -234,6 +235,12 @@ export function UsersView() {
             ? "As alterações são sincronizadas com a tabela user_profiles do seu projeto Supabase."
             : "Sem Supabase configurado, as alterações ficam apenas na sessão atual."}
         </p>
+        {isUsingSupabase && (
+          <p className="mt-2 text-xs text-logica-lilac">
+            Para definir senhas automaticamente, informe a variável VITE_SUPABASE_SERVICE_ROLE_KEY com a chave service role do
+            seu projeto.
+          </p>
+        )}
         {feedback && (
           <div
             className={clsx(
@@ -275,17 +282,15 @@ export function UsersView() {
             />
           </label>
           <label className="text-sm text-logica-purple">
-            Perfil de acesso
-            <select
+            {editing ? "Nova senha" : "Senha inicial"}
+            <input
+              type="password"
               className={inputClass}
-              value={form.role}
-              onChange={(event) => setForm((prev) => ({ ...prev, role: event.target.value as Role }))}
+              value={form.password}
+              onChange={(event) => setForm((prev) => ({ ...prev, password: event.target.value }))}
               disabled={isSaving || isDeleting}
-            >
-              <option value="master">Master</option>
-              <option value="gestor">Gestor</option>
-              <option value="financeiro">Financeiro</option>
-            </select>
+              placeholder={editing ? "Deixe em branco para manter" : "Informe uma senha segura"}
+            />
           </label>
           <div className="md:col-span-3 flex justify-end gap-3">
             {editing && (

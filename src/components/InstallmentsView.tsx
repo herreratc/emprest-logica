@@ -1,5 +1,5 @@
-import { useMemo, useState } from "react";
-import type { Company, Installment, Loan } from "../data/mockData";
+import { useEffect, useMemo, useState } from "react";
+import type { Company, Installment, InstallmentStatus, Loan } from "../data/mockData";
 import { formatCurrency, formatDate } from "../utils/formatters";
 
 const cardClass = "rounded-2xl border border-logica-purple/20 bg-white/80 p-4 shadow-md backdrop-blur";
@@ -29,10 +29,51 @@ export function InstallmentsView({
   const [statusFilter, setStatusFilter] = useState<StatusFilter>("todas");
   const [dateRange, setDateRange] = useState<DateRange>({});
   const [loanFilter, setLoanFilter] = useState<string | "all">("all");
+  const [now, setNow] = useState<Date>(() => new Date());
+
+  useEffect(() => {
+    if (typeof window === "undefined") return;
+
+    const interval = window.setInterval(() => {
+      setNow(new Date());
+    }, 60_000);
+
+    return () => window.clearInterval(interval);
+  }, []);
+
+  const computeStatus = (installment: Installment): InstallmentStatus => {
+    if (installment.status === "paga") {
+      return "paga";
+    }
+
+    const [year, month, day] = installment.date.split("-").map(Number);
+    const dueDate = new Date(year, (month ?? 1) - 1, day ?? 1);
+    const todayStart = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+    const todayEnd = new Date(todayStart.getTime() + 86_399_999);
+
+    if (dueDate < todayStart) {
+      return "vencida";
+    }
+
+    if (dueDate <= todayEnd) {
+      return "paga";
+    }
+
+    return "pendente";
+  };
+
+  const normalizedInstallments = useMemo(
+    () =>
+      installments.map((installment) => ({
+        ...installment,
+        autoStatus: computeStatus(installment)
+      })),
+    [installments, now]
+  );
 
   const filteredInstallments = useMemo(() => {
-    return installments.filter((installment) => {
-      if (statusFilter !== "todas" && installment.status !== statusFilter) {
+    return normalizedInstallments.filter((installment) => {
+      if (statusFilter !== "todas" && installment.autoStatus !== statusFilter) {
         return false;
       }
       if (loanFilter !== "all" && installment.loanId !== loanFilter) {
@@ -46,16 +87,18 @@ export function InstallmentsView({
       }
       return true;
     });
-  }, [installments, statusFilter, dateRange, loanFilter]);
+  }, [normalizedInstallments, statusFilter, dateRange, loanFilter]);
 
   const totals = useMemo(() => {
     const total = filteredInstallments.reduce((acc, item) => acc + item.value, 0);
-    const paid = filteredInstallments.filter((item) => item.status === "paga").reduce((acc, item) => acc + item.value, 0);
+    const paid = filteredInstallments
+      .filter((item) => item.autoStatus === "paga")
+      .reduce((acc, item) => acc + item.value, 0);
     return {
       totalCount: filteredInstallments.length,
-      pendingCount: filteredInstallments.filter((item) => item.status === "pendente").length,
-      paidCount: filteredInstallments.filter((item) => item.status === "paga").length,
-      overdueCount: filteredInstallments.filter((item) => item.status === "vencida").length,
+      pendingCount: filteredInstallments.filter((item) => item.autoStatus === "pendente").length,
+      paidCount: filteredInstallments.filter((item) => item.autoStatus === "paga").length,
+      overdueCount: filteredInstallments.filter((item) => item.autoStatus === "vencida").length,
       totalValue: total,
       paidValue: paid
     };
@@ -181,7 +224,7 @@ export function InstallmentsView({
             <tr>
               <th className="px-3 py-2 text-left font-semibold">Contrato</th>
               <th className="px-3 py-2 text-left font-semibold">Parcela</th>
-              <th className="px-3 py-2 text-left font-semibold">Data</th>
+              <th className="px-3 py-2 text-left font-semibold">Vencimento</th>
               <th className="px-3 py-2 text-left font-semibold">Valor</th>
               <th className="px-3 py-2 text-left font-semibold">Juros</th>
               <th className="px-3 py-2 text-left font-semibold">Status</th>
@@ -200,14 +243,14 @@ export function InstallmentsView({
                   <td className="px-3 py-2">
                     <span
                       className={`rounded-full px-3 py-1 text-xs font-semibold uppercase ${
-                        installment.status === "paga"
+                        installment.autoStatus === "paga"
                           ? "bg-logica-purple/20 text-logica-purple"
-                          : installment.status === "pendente"
+                          : installment.autoStatus === "pendente"
                           ? "bg-logica-rose/20 text-logica-rose"
                           : "bg-red-100 text-red-600"
                       }`}
                     >
-                      {installment.status}
+                      {installment.autoStatus}
                     </span>
                   </td>
                 </tr>
