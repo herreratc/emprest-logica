@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from "react";
+import { useMemo, useState } from "react";
 import type { Company, Installment, InstallmentStatus, Loan } from "../data/mockData";
 import { formatCurrency, formatDate } from "../utils/formatters";
 
@@ -29,51 +29,9 @@ export function InstallmentsView({
   const [statusFilter, setStatusFilter] = useState<StatusFilter>("todas");
   const [dateRange, setDateRange] = useState<DateRange>({});
   const [loanFilter, setLoanFilter] = useState<string | "all">("all");
-  const [now, setNow] = useState<Date>(() => new Date());
-
-  useEffect(() => {
-    if (typeof window === "undefined") return;
-
-    const interval = window.setInterval(() => {
-      setNow(new Date());
-    }, 60_000);
-
-    return () => window.clearInterval(interval);
-  }, []);
-
-  const computeStatus = (installment: Installment): InstallmentStatus => {
-    if (installment.status === "paga") {
-      return "paga";
-    }
-
-    const [year, month, day] = installment.date.split("-").map(Number);
-    const dueDate = new Date(year, (month ?? 1) - 1, day ?? 1);
-    const todayStart = new Date(now.getFullYear(), now.getMonth(), now.getDate());
-    const todayEnd = new Date(todayStart.getTime() + 86_399_999);
-
-    if (dueDate < todayStart) {
-      return "vencida";
-    }
-
-    if (dueDate <= todayEnd) {
-      return "paga";
-    }
-
-    return "pendente";
-  };
-
-  const normalizedInstallments = useMemo(
-    () =>
-      installments.map((installment) => ({
-        ...installment,
-        autoStatus: computeStatus(installment)
-      })),
-    [installments, now]
-  );
-
   const filteredInstallments = useMemo(() => {
-    return normalizedInstallments.filter((installment) => {
-      if (statusFilter !== "todas" && installment.autoStatus !== statusFilter) {
+    return installments.filter((installment) => {
+      if (statusFilter !== "todas" && installment.status !== statusFilter) {
         return false;
       }
       if (loanFilter !== "all" && installment.loanId !== loanFilter) {
@@ -87,18 +45,18 @@ export function InstallmentsView({
       }
       return true;
     });
-  }, [normalizedInstallments, statusFilter, dateRange, loanFilter]);
+  }, [installments, statusFilter, dateRange, loanFilter]);
 
   const totals = useMemo(() => {
     const total = filteredInstallments.reduce((acc, item) => acc + item.value, 0);
     const paid = filteredInstallments
-      .filter((item) => item.autoStatus === "paga")
+      .filter((item) => item.status === "paga")
       .reduce((acc, item) => acc + item.value, 0);
     return {
       totalCount: filteredInstallments.length,
-      pendingCount: filteredInstallments.filter((item) => item.autoStatus === "pendente").length,
-      paidCount: filteredInstallments.filter((item) => item.autoStatus === "paga").length,
-      overdueCount: filteredInstallments.filter((item) => item.autoStatus === "vencida").length,
+      pendingCount: filteredInstallments.filter((item) => item.status === "pendente").length,
+      paidCount: filteredInstallments.filter((item) => item.status === "paga").length,
+      overdueCount: filteredInstallments.filter((item) => item.status === "vencida").length,
       totalValue: total,
       paidValue: paid
     };
@@ -243,14 +201,14 @@ export function InstallmentsView({
                   <td className="px-3 py-2">
                     <span
                       className={`rounded-full px-3 py-1 text-xs font-semibold uppercase ${
-                        installment.autoStatus === "paga"
+                        installment.status === "paga"
                           ? "bg-logica-purple/20 text-logica-purple"
-                          : installment.autoStatus === "pendente"
+                          : installment.status === "pendente"
                           ? "bg-logica-rose/20 text-logica-rose"
                           : "bg-red-100 text-red-600"
                       }`}
                     >
-                      {installment.autoStatus}
+                      {installment.status}
                     </span>
                   </td>
                 </tr>
