@@ -18,11 +18,11 @@ Inclui autenticação via Supabase, dashboards interativos e utilitários para s
    npm install
    ```
 
-2. Crie um arquivo `.env` na raiz do projeto com as credenciais do Supabase:
+2. Duplique o arquivo `.env.example` na raiz do projeto para `.env` e informe as credenciais do Supabase:
 
    ```bash
-   VITE_SUPABASE_URL=https://<sua-instancia>.supabase.co
-   VITE_SUPABASE_ANON_KEY=<sua-chave-anon>
+   cp .env.example .env
+   # edite o arquivo criado com a URL e a chave anônima do seu projeto Supabase
    ```
 
 3. Execute o servidor de desenvolvimento:
