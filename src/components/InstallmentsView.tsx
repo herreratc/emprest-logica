@@ -1,5 +1,5 @@
 import { useMemo, useState } from "react";
-import type { Company, Installment, InstallmentStatus, Loan } from "../data/mockData";
+import type { Company, Consortium, Installment, InstallmentStatus, Loan } from "../data/mockData";
 import { formatCurrency, formatDate } from "../utils/formatters";
 
 const cardClass = "rounded-2xl border border-logica-purple/20 bg-white/80 p-4 shadow-md backdrop-blur";
@@ -7,12 +7,15 @@ const cardClass = "rounded-2xl border border-logica-purple/20 bg-white/80 p-4 sh
 type InstallmentsViewProps = {
   companies: Company[];
   loans: Loan[];
+  consortiums: Consortium[];
   installments: Installment[];
   selectedCompany: string | "all";
   onSelectCompany: (company: string | "all") => void;
 };
 
 type StatusFilter = "todas" | Installment["status"];
+
+type ContractFilter = "all" | `${"loan" | "consortium"}:${string}`;
 
 type DateRange = {
   start?: string;
@@ -22,19 +25,27 @@ type DateRange = {
 export function InstallmentsView({
   companies,
   loans,
+  consortiums,
   installments,
   selectedCompany,
   onSelectCompany
 }: InstallmentsViewProps) {
   const [statusFilter, setStatusFilter] = useState<StatusFilter>("todas");
   const [dateRange, setDateRange] = useState<DateRange>({});
-  const [loanFilter, setLoanFilter] = useState<string | "all">("all");
+  const [contractFilter, setContractFilter] = useState<ContractFilter>("all");
+  const [contractTypeFilter, setContractTypeFilter] = useState<"todos" | "loan" | "consortium">("todos");
   const filteredInstallments = useMemo(() => {
     return installments.filter((installment) => {
       if (statusFilter !== "todas" && installment.status !== statusFilter) {
         return false;
       }
-      if (loanFilter !== "all" && installment.loanId !== loanFilter) {
+      if (contractTypeFilter !== "todos" && installment.contractType !== contractTypeFilter) {
+        return false;
+      }
+      if (
+        contractFilter !== "all" &&
+        `${installment.contractType}:${installment.contractId}` !== contractFilter
+      ) {
         return false;
       }
       if (dateRange.start && new Date(installment.date) < new Date(dateRange.start)) {
@@ -45,7 +56,7 @@ export function InstallmentsView({
       }
       return true;
     });
-  }, [installments, statusFilter, dateRange, loanFilter]);
+  }, [installments, statusFilter, dateRange, contractFilter, contractTypeFilter]);
 
   const totals = useMemo(() => {
     const total = filteredInstallments.reduce((acc, item) => acc + item.value, 0);
@@ -65,8 +76,25 @@ export function InstallmentsView({
   const resetFilters = () => {
     setStatusFilter("todas");
     setDateRange({});
-    setLoanFilter("all");
+    setContractFilter("all");
+    setContractTypeFilter("todos");
   };
+
+  const contractOptions = useMemo(() => {
+    const options: Array<{ label: string; value: ContractFilter }> = [
+      { label: "Todos", value: "all" }
+    ];
+
+    loans.forEach((loan) => {
+      options.push({ label: `Empréstimo · ${loan.reference}`, value: `loan:${loan.id}` });
+    });
+
+    consortiums.forEach((consortium) => {
+      options.push({ label: `Consórcio · ${consortium.observation}`, value: `consortium:${consortium.id}` });
+    });
+
+    return options;
+  }, [loans, consortiums]);
 
   return (
     <div className="space-y-6">
@@ -141,6 +169,18 @@ export function InstallmentsView({
             </select>
           </label>
           <label className="text-sm text-logica-purple">
+            Tipo de contrato
+            <select
+              value={contractTypeFilter}
+              onChange={(event) => setContractTypeFilter(event.target.value as typeof contractTypeFilter)}
+              className="mt-1 w-full rounded-xl border border-logica-lilac/40 bg-white px-4 py-2 text-sm focus:border-logica-purple focus:outline-none"
+            >
+              <option value="todos">Todos</option>
+              <option value="loan">Empréstimos</option>
+              <option value="consortium">Consórcios</option>
+            </select>
+          </label>
+          <label className="text-sm text-logica-purple">
             Data início
             <input
               type="date"
@@ -161,14 +201,13 @@ export function InstallmentsView({
           <label className="text-sm text-logica-purple">
             Contrato
             <select
-              value={loanFilter}
-              onChange={(event) => setLoanFilter(event.target.value as typeof loanFilter)}
+              value={contractFilter}
+              onChange={(event) => setContractFilter(event.target.value as ContractFilter)}
               className="mt-1 w-full rounded-xl border border-logica-lilac/40 bg-white px-4 py-2 text-sm focus:border-logica-purple focus:outline-none"
             >
-              <option value="all">Todos</option>
-              {loans.map((loan) => (
-                <option key={loan.id} value={loan.id}>
-                  {loan.reference}
+              {contractOptions.map((option) => (
+                <option key={option.value} value={option.value}>
+                  {option.label}
                 </option>
               ))}
             </select>
@@ -181,6 +220,7 @@ export function InstallmentsView({
           <thead className="bg-logica-light-lilac/60">
             <tr>
               <th className="px-3 py-2 text-left font-semibold">Contrato</th>
+              <th className="px-3 py-2 text-left font-semibold">Tipo</th>
               <th className="px-3 py-2 text-left font-semibold">Parcela</th>
               <th className="px-3 py-2 text-left font-semibold">Vencimento</th>
               <th className="px-3 py-2 text-left font-semibold">Valor</th>
@@ -190,10 +230,16 @@ export function InstallmentsView({
           </thead>
           <tbody className="divide-y divide-logica-lilac/20">
             {filteredInstallments.map((installment) => {
-              const loan = loans.find((item) => item.id === installment.loanId);
+              const contractName =
+                installment.contractType === "loan"
+                  ? loans.find((item) => item.id === installment.contractId)?.reference ?? "-"
+                  : consortiums.find((item) => item.id === installment.contractId)?.observation ?? "-";
+              const contractTypeLabel =
+                installment.contractType === "loan" ? "Empréstimo" : "Consórcio";
               return (
                 <tr key={installment.id} className="hover:bg-logica-light-lilac/40">
-                  <td className="px-3 py-2">{loan?.reference ?? "-"}</td>
+                  <td className="px-3 py-2">{contractName}</td>
+                  <td className="px-3 py-2">{contractTypeLabel}</td>
                   <td className="px-3 py-2">{installment.sequence}</td>
                   <td className="px-3 py-2">{formatDate(installment.date)}</td>
                   <td className="px-3 py-2">{formatCurrency(installment.value)}</td>

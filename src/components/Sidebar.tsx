@@ -4,6 +4,7 @@ const menuItems = [
   { key: "dashboard", label: "Dashboard" },
   { key: "companies", label: "Empresas" },
   { key: "loans", label: "Empréstimos" },
+  { key: "consortiums", label: "Consórcios" },
   { key: "installments", label: "Parcelas" },
   { key: "users", label: "Usuários" },
   { key: "simulation", label: "Simulação" }

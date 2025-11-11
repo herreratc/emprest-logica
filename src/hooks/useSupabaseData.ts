@@ -2,9 +2,11 @@ import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { hasSupabaseConfig, supabase } from "../supabaseClient";
 import {
   companies as mockCompanies,
+  consortiums as mockConsortiums,
   installments as mockInstallments,
   loans as mockLoans,
   type Company,
+  type Consortium,
   type Installment,
   type Loan,
   type LoanStatus,
@@ -17,6 +19,7 @@ export type MutationResult<T> = MutationSuccess<T> | MutationFailure;
 
 export type UpsertCompanyInput = Omit<Company, "id"> & { id?: string };
 export type UpsertLoanInput = Omit<Loan, "id"> & { id?: string };
+export type UpsertConsortiumInput = Omit<Consortium, "id"> & { id?: string };
 export type UpsertInstallmentInput = Omit<Installment, "id"> & { id?: string };
 
 type DbCompany = {
@@ -55,9 +58,28 @@ type DbLoan = {
   contract_start: string;
 };
 
+type DbConsortium = {
+  id: string;
+  company_id: string;
+  observation: string;
+  group_code: string;
+  quota: string;
+  outstanding_balance: number | string | null;
+  current_installment_value: number | string | null;
+  installments_to_pay: number | null;
+  administrator: string;
+  credit_to_receive: number | string | null;
+  category: string;
+  total_installments: number | null;
+  amount_paid: number | string | null;
+  amount_to_pay: number | string | null;
+  paid_installments: number | null;
+};
+
 type DbInstallment = {
   id: string;
-  loan_id: string;
+  contract_type: Installment["contractType"];
+  contract_id: string;
   sequence: number | null;
   date: string;
   value: number | string | null;
@@ -83,8 +105,13 @@ const sortCompanies = (items: Company[]) =>
 const sortLoans = (items: Loan[]) =>
   [...items].sort((a, b) => new Date(b.startDate).getTime() - new Date(a.startDate).getTime());
 
+const sortConsortiums = (items: Consortium[]) =>
+  [...items].sort((a, b) => a.observation.localeCompare(b.observation, "pt-BR", { sensitivity: "base" }));
+
 const sortInstallments = (items: Installment[]) =>
   [...items].sort((a, b) => a.sequence - b.sequence);
+
+const getBrazilNow = () => new Date(new Date().toLocaleString("en-US", { timeZone: "America/Sao_Paulo" }));
 
 const mapCompanyFromDb = (record: DbCompany): Company => ({
   id: record.id,
@@ -174,9 +201,54 @@ const mapLoanToDb = (input: UpsertLoanInput): Record<string, unknown> => {
   return payload;
 };
 
+const mapConsortiumFromDb = (record: DbConsortium): Consortium => ({
+  id: record.id,
+  companyId: record.company_id,
+  observation: record.observation,
+  groupCode: record.group_code,
+  quota: record.quota,
+  outstandingBalance: toNumber(record.outstanding_balance),
+  currentInstallmentValue: toNumber(record.current_installment_value),
+  installmentsToPay: record.installments_to_pay ?? 0,
+  administrator: record.administrator,
+  creditToReceive: toNumber(record.credit_to_receive),
+  category: record.category,
+  totalInstallments: record.total_installments ?? 0,
+  amountPaid: toNumber(record.amount_paid),
+  amountToPay: toNumber(record.amount_to_pay),
+  paidInstallments: record.paid_installments ?? 0
+});
+
+const mapConsortiumToDb = (input: UpsertConsortiumInput): Record<string, unknown> => {
+  const payload: Record<string, unknown> = {
+    id: input.id,
+    company_id: input.companyId,
+    observation: input.observation,
+    group_code: input.groupCode,
+    quota: input.quota,
+    outstanding_balance: input.outstandingBalance,
+    current_installment_value: input.currentInstallmentValue,
+    installments_to_pay: input.installmentsToPay,
+    administrator: input.administrator,
+    credit_to_receive: input.creditToReceive,
+    category: input.category,
+    total_installments: input.totalInstallments,
+    amount_paid: input.amountPaid,
+    amount_to_pay: input.amountToPay,
+    paid_installments: input.paidInstallments
+  };
+
+  if (!payload.id) {
+    delete payload.id;
+  }
+
+  return payload;
+};
+
 const mapInstallmentFromDb = (record: DbInstallment): Installment => ({
   id: record.id,
-  loanId: record.loan_id,
+  contractType: record.contract_type,
+  contractId: record.contract_id,
   sequence: record.sequence ?? 0,
   date: record.date,
   value: toNumber(record.value),
@@ -187,7 +259,8 @@ const mapInstallmentFromDb = (record: DbInstallment): Installment => ({
 const mapInstallmentToDb = (input: UpsertInstallmentInput): Record<string, unknown> => {
   const payload: Record<string, unknown> = {
     id: input.id,
-    loan_id: input.loanId,
+    contract_type: input.contractType,
+    contract_id: input.contractId,
     sequence: input.sequence,
     date: input.date,
     value: input.value,
@@ -238,9 +311,111 @@ const normalizeInstallmentStatuses = (items: Installment[], referenceDate: Date)
   return { normalized, updates };
 };
 
+const recalculateLoanFromInstallments = (loan: Loan, installments: Installment[]) => {
+  const related = installments.filter(
+    (installment) => installment.contractType === "loan" && installment.contractId === loan.id
+  );
+
+  if (related.length === 0) {
+    return loan;
+  }
+
+  const paid = related.filter((installment) => installment.status === "paga");
+  const pending = related.filter((installment) => installment.status !== "paga");
+  const paidAmount = paid.reduce((acc, installment) => acc + installment.value, 0);
+  const pendingAmount = pending.reduce((acc, installment) => acc + installment.value, 0);
+  const paidCount = paid.length;
+  const totalInstallments = loan.installments || related.length;
+  const remainingFromTotal = totalInstallments > 0 ? Math.max(totalInstallments - paidCount, 0) : 0;
+  const remaining = Math.max(pending.length, remainingFromTotal);
+
+  if (
+    paidAmount === loan.amountPaid &&
+    pendingAmount === loan.amountToPay &&
+    paidCount === loan.paidInstallments &&
+    remaining === loan.remainingInstallments
+  ) {
+    return loan;
+  }
+
+  return {
+    ...loan,
+    amountPaid: paidAmount,
+    amountToPay: pendingAmount,
+    paidInstallments: paidCount,
+    remainingInstallments: remaining
+  };
+};
+
+const recalculateConsortiumFromInstallments = (consortium: Consortium, installments: Installment[]) => {
+  const related = installments.filter(
+    (installment) => installment.contractType === "consortium" && installment.contractId === consortium.id
+  );
+
+  if (related.length === 0) {
+    return consortium;
+  }
+
+  const paid = related.filter((installment) => installment.status === "paga");
+  const pending = related.filter((installment) => installment.status !== "paga");
+  const paidAmount = paid.reduce((acc, installment) => acc + installment.value, 0);
+  const pendingAmount = pending.reduce((acc, installment) => acc + installment.value, 0);
+  const paidCount = paid.length;
+  const totalInstallments = consortium.totalInstallments || related.length;
+  const remainingFromTotal = totalInstallments > 0 ? Math.max(totalInstallments - paidCount, 0) : 0;
+  const remaining = Math.max(pending.length, remainingFromTotal);
+
+  if (
+    paidAmount === consortium.amountPaid &&
+    pendingAmount === consortium.amountToPay &&
+    paidCount === consortium.paidInstallments &&
+    remaining === consortium.installmentsToPay &&
+    pendingAmount === consortium.outstandingBalance
+  ) {
+    return consortium;
+  }
+
+  return {
+    ...consortium,
+    amountPaid: paidAmount,
+    amountToPay: pendingAmount,
+    outstandingBalance: pendingAmount,
+    paidInstallments: paidCount,
+    installmentsToPay: remaining
+  };
+};
+
+const reconcileContractsWithInstallments = (
+  loans: Loan[],
+  consortiums: Consortium[],
+  installments: Installment[]
+) => {
+  const loanUpdates: Loan[] = [];
+  const consortiumUpdates: Consortium[] = [];
+
+  const reconciledLoans = loans.map((loan) => {
+    const updated = recalculateLoanFromInstallments(loan, installments);
+    if (updated !== loan) {
+      loanUpdates.push(updated);
+    }
+    return updated;
+  });
+
+  const reconciledConsortiums = consortiums.map((consortium) => {
+    const updated = recalculateConsortiumFromInstallments(consortium, installments);
+    if (updated !== consortium) {
+      consortiumUpdates.push(updated);
+    }
+    return updated;
+  });
+
+  return { loans: reconciledLoans, consortiums: reconciledConsortiums, loanUpdates, consortiumUpdates };
+};
+
 export type SupabaseDataState = {
   companies: Company[];
   loans: Loan[];
+  consortiums: Consortium[];
   installments: Installment[];
   loading: boolean;
   error: string | null;
@@ -250,6 +425,8 @@ export type SupabaseDataState = {
   deleteCompany: (companyId: string) => Promise<MutationResult<null>>;
   saveLoan: (input: UpsertLoanInput) => Promise<MutationResult<Loan>>;
   deleteLoan: (loanId: string) => Promise<MutationResult<null>>;
+  saveConsortium: (input: UpsertConsortiumInput) => Promise<MutationResult<Consortium>>;
+  deleteConsortium: (consortiumId: string) => Promise<MutationResult<null>>;
   saveInstallment: (input: UpsertInstallmentInput) => Promise<MutationResult<Installment>>;
   deleteInstallment: (installmentId: string) => Promise<MutationResult<null>>;
   resetData: () => Promise<MutationResult<null>>;
@@ -260,19 +437,74 @@ const hasClient = hasSupabaseConfig && Boolean(supabase);
 export function useSupabaseData(): SupabaseDataState {
   const [companies, setCompanies] = useState<Company[]>(hasClient ? [] : mockCompanies);
   const [loans, setLoans] = useState<Loan[]>(hasClient ? [] : mockLoans);
+  const [consortiums, setConsortiums] = useState<Consortium[]>(hasClient ? [] : mockConsortiums);
   const [installments, setInstallments] = useState<Installment[]>(hasClient ? [] : mockInstallments);
   const [loading, setLoading] = useState<boolean>(hasClient);
   const [error, setError] = useState<string | null>(null);
   const statusSyncingRef = useRef(false);
+  const loansRef = useRef(loans);
+  const consortiumsRef = useRef(consortiums);
+  const installmentsRef = useRef(installments);
+
+  useEffect(() => {
+    loansRef.current = loans;
+  }, [loans]);
+
+  useEffect(() => {
+    consortiumsRef.current = consortiums;
+  }, [consortiums]);
+
+  useEffect(() => {
+    installmentsRef.current = installments;
+  }, [installments]);
+
+  const applyContractsState = useCallback(
+    (nextLoans?: Loan[], nextConsortiums?: Consortium[]) => {
+      const sourceLoans = sortLoans(nextLoans ?? loansRef.current);
+      const sourceConsortiums = sortConsortiums(nextConsortiums ?? consortiumsRef.current);
+      const { loans: reconciledLoans, consortiums: reconciledConsortiums } = reconcileContractsWithInstallments(
+        sourceLoans,
+        sourceConsortiums,
+        installmentsRef.current
+      );
+      setLoans(reconciledLoans);
+      setConsortiums(reconciledConsortiums);
+    },
+    []
+  );
+
+  const applyInstallmentsState = useCallback(
+    (
+      nextInstallments: Installment[],
+      overrides?: { loans?: Loan[]; consortiums?: Consortium[] }
+    ) => {
+      const sortedInstallments = sortInstallments(nextInstallments);
+      const loanSource = overrides?.loans ? sortLoans(overrides.loans) : sortLoans(loansRef.current);
+      const consortiumSource = overrides?.consortiums
+        ? sortConsortiums(overrides.consortiums)
+        : sortConsortiums(consortiumsRef.current);
+      const { loans: reconciledLoans, consortiums: reconciledConsortiums } = reconcileContractsWithInstallments(
+        loanSource,
+        consortiumSource,
+        sortedInstallments
+      );
+      setInstallments(sortedInstallments);
+      setLoans(reconciledLoans);
+      setConsortiums(reconciledConsortiums);
+    },
+    []
+  );
 
   const fetchData = useCallback(async () => {
     if (!hasClient || !supabase) {
       setError(null);
       setLoading(false);
       setCompanies(sortCompanies(mockCompanies));
-      setLoans(sortLoans(mockLoans));
-      const { normalized } = normalizeInstallmentStatuses(mockInstallments, new Date());
-      setInstallments(sortInstallments(normalized));
+      const referenceDate = getBrazilNow();
+      const sortedLoans = sortLoans(mockLoans);
+      const sortedConsortiums = sortConsortiums(mockConsortiums);
+      const { normalized } = normalizeInstallmentStatuses(mockInstallments, referenceDate);
+      applyInstallmentsState(normalized, { loans: sortedLoans, consortiums: sortedConsortiums });
       return;
     }
 
@@ -280,13 +512,14 @@ export function useSupabaseData(): SupabaseDataState {
     setError(null);
 
     try {
-      const [companiesResponse, loansResponse, installmentsResponse] = await Promise.all([
+      const [companiesResponse, loansResponse, consortiumsResponse, installmentsResponse] = await Promise.all([
         supabase.from("companies").select("*").order("name", { ascending: true }),
         supabase.from("loans").select("*").order("start_date", { ascending: false }),
+        supabase.from("consortiums").select("*").order("observation", { ascending: true }),
         supabase.from("installments").select("*").order("sequence", { ascending: true })
       ]);
 
-      const responses = [companiesResponse, loansResponse, installmentsResponse];
+      const responses = [companiesResponse, loansResponse, consortiumsResponse, installmentsResponse];
 
       const firstError = responses.find((response) => response.error)?.error;
 
@@ -296,16 +529,38 @@ export function useSupabaseData(): SupabaseDataState {
       }
 
       setCompanies(sortCompanies(((companiesResponse.data as DbCompany[]) ?? []).map(mapCompanyFromDb)));
-      setLoans(sortLoans(((loansResponse.data as DbLoan[]) ?? []).map(mapLoanFromDb)));
+      const mappedLoans = sortLoans(((loansResponse.data as DbLoan[]) ?? []).map(mapLoanFromDb));
+      const mappedConsortiums = sortConsortiums(
+        ((consortiumsResponse.data as DbConsortium[]) ?? []).map(mapConsortiumFromDb)
+      );
 
       const mappedInstallments = ((installmentsResponse.data as DbInstallment[]) ?? []).map(mapInstallmentFromDb);
-      const { normalized, updates } = normalizeInstallmentStatuses(mappedInstallments, new Date());
-      setInstallments(sortInstallments(normalized));
+      const referenceDate = getBrazilNow();
+      const { normalized, updates } = normalizeInstallmentStatuses(mappedInstallments, referenceDate);
+      const { loanUpdates, consortiumUpdates } = reconcileContractsWithInstallments(
+        mappedLoans,
+        mappedConsortiums,
+        normalized
+      );
+
+      applyInstallmentsState(normalized, { loans: mappedLoans, consortiums: mappedConsortiums });
 
       if (updates.length > 0) {
         await supabase
           .from("installments")
           .upsert(updates.map((installment) => mapInstallmentToDb({ ...installment })), { onConflict: "id" });
+      }
+
+      if (loanUpdates.length > 0) {
+        await supabase
+          .from("loans")
+          .upsert(loanUpdates.map((loan) => mapLoanToDb({ ...loan })), { onConflict: "id" });
+      }
+
+      if (consortiumUpdates.length > 0) {
+        await supabase
+          .from("consortiums")
+          .upsert(consortiumUpdates.map((item) => mapConsortiumToDb({ ...item })), { onConflict: "id" });
       }
     } catch (err) {
       const message = err instanceof Error ? err.message : String(err);
@@ -313,7 +568,7 @@ export function useSupabaseData(): SupabaseDataState {
     } finally {
       setLoading(false);
     }
-  }, []);
+  }, [applyInstallmentsState]);
 
   useEffect(() => {
     fetchData();
@@ -357,11 +612,24 @@ export function useSupabaseData(): SupabaseDataState {
     async (companyId: string): Promise<MutationResult<null>> => {
       const removeFromState = () => {
         setCompanies((prev) => prev.filter((company) => company.id !== companyId));
-        const relatedLoanIds = loans.filter((loan) => loan.companyId === companyId).map((loan) => loan.id);
-        if (relatedLoanIds.length > 0) {
-          setLoans((prev) => prev.filter((loan) => loan.companyId !== companyId));
-          setInstallments((prev) => prev.filter((installment) => !relatedLoanIds.includes(installment.loanId)));
-        }
+        const remainingLoans = loansRef.current.filter((loan) => loan.companyId !== companyId);
+        const remainingConsortiums = consortiumsRef.current.filter(
+          (consortium) => consortium.companyId !== companyId
+        );
+        const remainingInstallments = installmentsRef.current.filter((installment) => {
+          if (installment.contractType === "loan") {
+            return remainingLoans.some((loan) => loan.id === installment.contractId);
+          }
+          if (installment.contractType === "consortium") {
+            return remainingConsortiums.some((item) => item.id === installment.contractId);
+          }
+          return true;
+        });
+
+        applyInstallmentsState(remainingInstallments, {
+          loans: remainingLoans,
+          consortiums: remainingConsortiums
+        });
       };
 
       if (!hasClient || !supabase) {
@@ -378,16 +646,23 @@ export function useSupabaseData(): SupabaseDataState {
       removeFromState();
       return { success: true, data: null };
     },
-    [loans]
+    [applyInstallmentsState]
   );
 
   const upsertLoan = useCallback(
     async (input: UpsertLoanInput): Promise<MutationResult<Loan>> => {
       const baseLoan: Loan = { ...input, id: input.id ?? ensureId() };
+      const normalizedLoan = recalculateLoanFromInstallments(baseLoan, installmentsRef.current);
 
       if (!hasClient || !supabase) {
-        setLoans((prev) => sortLoans([...(prev.filter((loan) => loan.id !== baseLoan.id)), baseLoan]));
-        return { success: true, data: baseLoan };
+        applyContractsState(
+          [
+            ...loansRef.current.filter((loan) => loan.id !== normalizedLoan.id),
+            normalizedLoan
+          ],
+          undefined
+        );
+        return { success: true, data: normalizedLoan };
       }
 
       const payload = mapLoanToDb({ ...input, id: input.id ?? undefined });
@@ -403,17 +678,38 @@ export function useSupabaseData(): SupabaseDataState {
       }
 
       const mapped = mapLoanFromDb(data as DbLoan);
-      setLoans((prev) => sortLoans([...(prev.filter((loan) => loan.id !== mapped.id)), mapped]));
-      return { success: true, data: mapped };
+      const recalculated = recalculateLoanFromInstallments(mapped, installmentsRef.current);
+
+      if (
+        (recalculated.amountPaid !== mapped.amountPaid ||
+          recalculated.amountToPay !== mapped.amountToPay ||
+          recalculated.paidInstallments !== mapped.paidInstallments ||
+          recalculated.remainingInstallments !== mapped.remainingInstallments) &&
+        hasClient &&
+        supabase
+      ) {
+        await supabase
+          .from("loans")
+          .upsert([mapLoanToDb({ ...recalculated })], { onConflict: "id" });
+      }
+
+      applyContractsState(
+        [...loansRef.current.filter((loan) => loan.id !== recalculated.id), recalculated],
+        undefined
+      );
+      return { success: true, data: recalculated };
     },
-    []
+    [applyContractsState]
   );
 
   const removeLoan = useCallback(
     async (loanId: string): Promise<MutationResult<null>> => {
       const removeFromState = () => {
-        setLoans((prev) => prev.filter((loan) => loan.id !== loanId));
-        setInstallments((prev) => prev.filter((installment) => installment.loanId !== loanId));
+        const remainingLoans = loansRef.current.filter((loan) => loan.id !== loanId);
+        const remainingInstallments = installmentsRef.current.filter(
+          (installment) => !(installment.contractType === "loan" && installment.contractId === loanId)
+        );
+        applyInstallmentsState(remainingInstallments, { loans: remainingLoans });
       };
 
       if (!hasClient || !supabase) {
@@ -430,14 +726,99 @@ export function useSupabaseData(): SupabaseDataState {
       removeFromState();
       return { success: true, data: null };
     },
-    []
+    [applyInstallmentsState]
+  );
+
+  const upsertConsortium = useCallback(
+    async (input: UpsertConsortiumInput): Promise<MutationResult<Consortium>> => {
+      const baseConsortium: Consortium = { ...input, id: input.id ?? ensureId() };
+      const normalizedConsortium = recalculateConsortiumFromInstallments(
+        baseConsortium,
+        installmentsRef.current
+      );
+
+      if (!hasClient || !supabase) {
+        applyContractsState(undefined, [
+          ...consortiumsRef.current.filter((item) => item.id !== normalizedConsortium.id),
+          normalizedConsortium
+        ]);
+        return { success: true, data: normalizedConsortium };
+      }
+
+      const payload = mapConsortiumToDb({ ...input, id: input.id ?? undefined });
+
+      const { data, error } = await supabase
+        .from("consortiums")
+        .upsert(payload, { onConflict: "id" })
+        .select()
+        .single();
+
+      if (error) {
+        return { success: false, error: error.message };
+      }
+
+      const mapped = mapConsortiumFromDb(data as DbConsortium);
+      const recalculated = recalculateConsortiumFromInstallments(mapped, installmentsRef.current);
+
+      if (
+        (recalculated.amountPaid !== mapped.amountPaid ||
+          recalculated.amountToPay !== mapped.amountToPay ||
+          recalculated.paidInstallments !== mapped.paidInstallments ||
+          recalculated.installmentsToPay !== mapped.installmentsToPay ||
+          recalculated.outstandingBalance !== mapped.outstandingBalance) &&
+        hasClient &&
+        supabase
+      ) {
+        await supabase
+          .from("consortiums")
+          .upsert([mapConsortiumToDb({ ...recalculated })], { onConflict: "id" });
+      }
+
+      applyContractsState(undefined, [
+        ...consortiumsRef.current.filter((item) => item.id !== recalculated.id),
+        recalculated
+      ]);
+      return { success: true, data: recalculated };
+    },
+    [applyContractsState]
+  );
+
+  const removeConsortium = useCallback(
+    async (consortiumId: string): Promise<MutationResult<null>> => {
+      const removeFromState = () => {
+        const remainingConsortiums = consortiumsRef.current.filter(
+          (consortium) => consortium.id !== consortiumId
+        );
+        const remainingInstallments = installmentsRef.current.filter(
+          (installment) =>
+            !(installment.contractType === "consortium" && installment.contractId === consortiumId)
+        );
+        applyInstallmentsState(remainingInstallments, { consortiums: remainingConsortiums });
+      };
+
+      if (!hasClient || !supabase) {
+        removeFromState();
+        return { success: true, data: null };
+      }
+
+      const { error } = await supabase.from("consortiums").delete().eq("id", consortiumId);
+
+      if (error) {
+        return { success: false, error: error.message };
+      }
+
+      removeFromState();
+      return { success: true, data: null };
+    },
+    [applyInstallmentsState]
   );
 
   const upsertInstallment = useCallback(
     async (input: UpsertInstallmentInput): Promise<MutationResult<Installment>> => {
       const baseInstallment: Installment = {
         id: input.id ?? ensureId(),
-        loanId: input.loanId,
+        contractType: input.contractType,
+        contractId: input.contractId,
         sequence: input.sequence,
         date: input.date,
         value: input.value,
@@ -447,16 +828,14 @@ export function useSupabaseData(): SupabaseDataState {
 
       const normalizedInstallment = {
         ...baseInstallment,
-        status: computeInstallmentAutoStatus(baseInstallment, new Date())
+        status: computeInstallmentAutoStatus(baseInstallment, getBrazilNow())
       };
 
       if (!hasClient || !supabase) {
-        setInstallments((prev) =>
-          sortInstallments([
-            ...prev.filter((installment) => installment.id !== normalizedInstallment.id),
-            normalizedInstallment
-          ])
+        const remaining = installmentsRef.current.filter(
+          (installment) => installment.id !== normalizedInstallment.id
         );
+        applyInstallmentsState([...remaining, normalizedInstallment]);
         return { success: true, data: normalizedInstallment };
       }
 
@@ -473,7 +852,7 @@ export function useSupabaseData(): SupabaseDataState {
       }
 
       const mapped = mapInstallmentFromDb(data as DbInstallment);
-      const autoStatus = computeInstallmentAutoStatus(mapped, new Date());
+      const autoStatus = computeInstallmentAutoStatus(mapped, getBrazilNow());
       const syncedInstallment = autoStatus === mapped.status ? mapped : { ...mapped, status: autoStatus };
 
       if (syncedInstallment !== mapped) {
@@ -482,21 +861,20 @@ export function useSupabaseData(): SupabaseDataState {
           .upsert([mapInstallmentToDb({ ...syncedInstallment })], { onConflict: "id" });
       }
 
-      setInstallments((prev) =>
-        sortInstallments([
-          ...prev.filter((installment) => installment.id !== syncedInstallment.id),
-          syncedInstallment
-        ])
+      const remaining = installmentsRef.current.filter(
+        (installment) => installment.id !== syncedInstallment.id
       );
+      applyInstallmentsState([...remaining, syncedInstallment]);
       return { success: true, data: syncedInstallment };
     },
-    []
+    [applyInstallmentsState]
   );
 
   const removeInstallment = useCallback(
     async (installmentId: string): Promise<MutationResult<null>> => {
       const removeFromState = () => {
-        setInstallments((prev) => prev.filter((installment) => installment.id !== installmentId));
+        const remaining = installmentsRef.current.filter((installment) => installment.id !== installmentId);
+        applyInstallmentsState(remaining);
       };
 
       if (!hasClient || !supabase) {
@@ -513,7 +891,7 @@ export function useSupabaseData(): SupabaseDataState {
       removeFromState();
       return { success: true, data: null };
     },
-    []
+    [applyInstallmentsState]
   );
 
   const syncInstallmentStatuses = useCallback(async () => {
@@ -522,30 +900,25 @@ export function useSupabaseData(): SupabaseDataState {
     }
 
     statusSyncingRef.current = true;
-    const referenceDate = new Date();
-    let pendingUpdates: Installment[] = [];
+    const referenceDate = getBrazilNow();
+    const { normalized, updates } = normalizeInstallmentStatuses(installmentsRef.current, referenceDate);
 
-    setInstallments((current) => {
-      const { normalized, updates } = normalizeInstallmentStatuses(current, referenceDate);
-      pendingUpdates = updates;
-      if (updates.length === 0) {
-        return current;
-      }
-      return sortInstallments(normalized);
-    });
+    if (updates.length > 0) {
+      applyInstallmentsState(normalized);
+    }
 
-    if (hasClient && supabase && pendingUpdates.length > 0) {
+    if (hasClient && supabase && updates.length > 0) {
       try {
         await supabase
           .from("installments")
-          .upsert(pendingUpdates.map((installment) => mapInstallmentToDb({ ...installment })), { onConflict: "id" });
+          .upsert(updates.map((installment) => mapInstallmentToDb({ ...installment })), { onConflict: "id" });
       } catch (err) {
         console.error("Falha ao atualizar status das parcelas automaticamente:", err);
       }
     }
 
     statusSyncingRef.current = false;
-  }, []);
+  }, [applyInstallmentsState]);
 
   useEffect(() => {
     if (typeof window === "undefined") {
@@ -567,6 +940,7 @@ export function useSupabaseData(): SupabaseDataState {
     const clearState = () => {
       setCompanies([]);
       setLoans([]);
+      setConsortiums([]);
       setInstallments([]);
     };
 
@@ -576,7 +950,7 @@ export function useSupabaseData(): SupabaseDataState {
     }
 
     try {
-      const tables = ["installments", "loans", "companies"] as const;
+      const tables = ["installments", "consortiums", "loans", "companies"] as const;
 
       for (const table of tables) {
         const { error } = await supabase.from(table).delete().not("id", "is", null);
@@ -597,6 +971,7 @@ export function useSupabaseData(): SupabaseDataState {
     () => ({
       companies,
       loans,
+      consortiums,
       installments,
       loading,
       error,
@@ -606,6 +981,8 @@ export function useSupabaseData(): SupabaseDataState {
       deleteCompany: removeCompany,
       saveLoan: upsertLoan,
       deleteLoan: removeLoan,
+      saveConsortium: upsertConsortium,
+      deleteConsortium: removeConsortium,
       saveInstallment: upsertInstallment,
       deleteInstallment: removeInstallment,
       resetData
@@ -613,6 +990,7 @@ export function useSupabaseData(): SupabaseDataState {
     [
       companies,
       loans,
+      consortiums,
       installments,
       loading,
       error,
@@ -621,6 +999,8 @@ export function useSupabaseData(): SupabaseDataState {
       removeCompany,
       upsertLoan,
       removeLoan,
+      upsertConsortium,
+      removeConsortium,
       upsertInstallment,
       removeInstallment,
       resetData

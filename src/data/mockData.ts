@@ -36,11 +36,38 @@ export type Loan = {
   contractStart: string;
 };
 
+export type ConsortiumCategory =
+  | "VEICULO"
+  | "IMOVEIS"
+  | "SERVICOS"
+  | "MAQUINAS"
+  | "OUTROS"
+  | string;
+
+export type Consortium = {
+  id: string;
+  companyId: string;
+  observation: string;
+  groupCode: string;
+  quota: string;
+  outstandingBalance: number;
+  currentInstallmentValue: number;
+  installmentsToPay: number;
+  administrator: string;
+  creditToReceive: number;
+  category: ConsortiumCategory;
+  totalInstallments: number;
+  amountPaid: number;
+  amountToPay: number;
+  paidInstallments: number;
+};
+
 export type InstallmentStatus = "paga" | "pendente" | "vencida";
 
 export type Installment = {
   id: string;
-  loanId: string;
+  contractType: "loan" | "consortium";
+  contractId: string;
   sequence: number;
   date: string;
   value: number;
@@ -149,10 +176,65 @@ export const loans: Loan[] = [
   }
 ];
 
+export const consortiums: Consortium[] = [
+  {
+    id: "consortium-1",
+    companyId: "empresa-x",
+    observation: "Caminhão placa PVC-2G90",
+    groupCode: "10274",
+    quota: "221",
+    outstandingBalance: 8228.75,
+    currentInstallmentValue: 1408.37,
+    installmentsToPay: 6,
+    administrator: "Bradesco",
+    creditToReceive: 0,
+    category: "VEICULO",
+    totalInstallments: 6,
+    amountPaid: 0,
+    amountToPay: 8228.75,
+    paidInstallments: 0
+  },
+  {
+    id: "consortium-2",
+    companyId: "empresa-x",
+    observation: "Virtus Lincoln",
+    groupCode: "40063",
+    quota: "101",
+    outstandingBalance: 22527.18,
+    currentInstallmentValue: 949.51,
+    installmentsToPay: 24,
+    administrator: "Bradesco",
+    creditToReceive: 0,
+    category: "VEICULO",
+    totalInstallments: 24,
+    amountPaid: 0,
+    amountToPay: 22527.18,
+    paidInstallments: 0
+  },
+  {
+    id: "consortium-3",
+    companyId: "empresa-y",
+    observation: "-",
+    groupCode: "40051",
+    quota: "119",
+    outstandingBalance: 150865.64,
+    currentInstallmentValue: 1289.27,
+    installmentsToPay: 117,
+    administrator: "Itaú (Matriz)",
+    creditToReceive: 185586,
+    category: "IMOVEIS",
+    totalInstallments: 117,
+    amountPaid: 0,
+    amountToPay: 150865.64,
+    paidInstallments: 0
+  }
+];
+
 export const installments: Installment[] = [
   {
     id: "inst-1",
-    loanId: "loan-1",
+    contractType: "loan",
+    contractId: "loan-1",
     sequence: 1,
     date: "2024-07-26",
     value: 15897.66,
@@ -161,7 +243,8 @@ export const installments: Installment[] = [
   },
   {
     id: "inst-2",
-    loanId: "loan-1",
+    contractType: "loan",
+    contractId: "loan-1",
     sequence: 2,
     date: "2024-08-26",
     value: 15897.66,
@@ -170,7 +253,8 @@ export const installments: Installment[] = [
   },
   {
     id: "inst-3",
-    loanId: "loan-1",
+    contractType: "loan",
+    contractId: "loan-1",
     sequence: 3,
     date: "2024-09-26",
     value: 15897.66,
@@ -179,7 +263,8 @@ export const installments: Installment[] = [
   },
   {
     id: "inst-4",
-    loanId: "loan-2",
+    contractType: "loan",
+    contractId: "loan-2",
     sequence: 15,
     date: "2024-07-15",
     value: 10833.33,
@@ -188,7 +273,8 @@ export const installments: Installment[] = [
   },
   {
     id: "inst-5",
-    loanId: "loan-2",
+    contractType: "loan",
+    contractId: "loan-2",
     sequence: 16,
     date: "2024-08-15",
     value: 10833.33,
@@ -197,7 +283,8 @@ export const installments: Installment[] = [
   },
   {
     id: "inst-6",
-    loanId: "loan-3",
+    contractType: "loan",
+    contractId: "loan-3",
     sequence: 35,
     date: "2023-12-05",
     value: 7777.78,

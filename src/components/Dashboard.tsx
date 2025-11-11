@@ -1,5 +1,5 @@
 import { useState } from "react";
-import type { Company, Installment, Loan } from "../data/mockData";
+import type { Company, Consortium, Installment, Loan } from "../data/mockData";
 import { formatCurrency, formatDate } from "../utils/formatters";
 import type { MutationResult } from "../hooks/useSupabaseData";
 
@@ -10,6 +10,7 @@ type DashboardProps = {
   selectedCompany: string | "all";
   onSelectCompany: (company: string | "all") => void;
   loans: Loan[];
+  consortiums: Consortium[];
   installments: Installment[];
   onResetData: () => Promise<MutationResult<null>>;
   isUsingSupabase: boolean;
@@ -22,6 +23,7 @@ export function Dashboard({
   selectedCompany,
   onSelectCompany,
   loans,
+  consortiums,
   installments,
   onResetData,
   isUsingSupabase
@@ -30,7 +32,9 @@ export function Dashboard({
   const [isResetting, setIsResetting] = useState(false);
   const overdueInstallments = installments.filter((installment) => installment.status === "vencida");
   const paidInstallments = installments.filter((installment) => installment.status === "paga");
-  const totalDebt = loans.reduce((acc, loan) => acc + loan.amountToPay, 0);
+  const totalLoanValue = loans.reduce((acc, loan) => acc + loan.amountToPay, 0);
+  const totalConsortiumValue = consortiums.reduce((acc, item) => acc + item.outstandingBalance, 0);
+  const totalDebt = totalLoanValue + totalConsortiumValue;
 
   const companyName = selectedCompany === "all"
     ? "Todas as empresas"
@@ -39,7 +43,7 @@ export function Dashboard({
   const handleReset = async () => {
     if (isResetting) return;
     const confirmed = window.confirm(
-      "Confirma a remoção de todos os cadastros de empresas, empréstimos e parcelas?"
+      "Confirma a remoção de todos os cadastros de empresas, empréstimos, consórcios e parcelas?"
     );
     if (!confirmed) return;
 
@@ -70,7 +74,7 @@ export function Dashboard({
         <div>
           <h1 className="text-3xl font-semibold text-logica-purple">Dashboard</h1>
           <p className="text-sm text-logica-lilac">
-            Indicadores consolidados dos empréstimos cadastrados na plataforma.
+            Indicadores consolidados dos empréstimos e consórcios cadastrados na plataforma.
           </p>
         </div>
         <div className="flex flex-wrap items-center gap-3">
@@ -109,16 +113,31 @@ export function Dashboard({
         </div>
       )}
 
-      <section className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
+      <section className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4 2xl:grid-cols-5">
         <div className={`${cardBaseClass} border-logica-purple/20 shadow-logica-purple/20`}>
           <p className="text-xs font-semibold uppercase tracking-wide text-logica-lilac">Empresa</p>
           <p className="mt-2 text-lg font-semibold text-logica-purple">{companyName}</p>
-          <p className="text-xs text-logica-lilac">{loans.length} operações vinculadas</p>
+          <p className="text-xs text-logica-lilac">{loans.length + consortiums.length} contratos vinculados</p>
         </div>
         <div className={`${cardBaseClass} border-logica-rose/20 shadow-logica-rose/20`}>
           <p className="text-xs font-semibold uppercase tracking-wide text-logica-lilac">Total de empréstimos</p>
           <p className="mt-2 text-3xl font-bold text-logica-rose">{loans.length}</p>
           <p className="text-xs text-logica-lilac">Quantidade de contratos ativos e finalizados</p>
+        </div>
+        <div className={`${cardBaseClass} border-logica-purple/20 shadow-logica-purple/20`}>
+          <p className="text-xs font-semibold uppercase tracking-wide text-logica-lilac">Total de consórcios</p>
+          <p className="mt-2 text-3xl font-bold text-logica-purple">{consortiums.length}</p>
+          <p className="text-xs text-logica-lilac">Operações em acompanhamento</p>
+        </div>
+        <div className={`${cardBaseClass} border-logica-rose/20 shadow-logica-rose/20`}>
+          <p className="text-xs font-semibold uppercase tracking-wide text-logica-lilac">Empréstimos em R$</p>
+          <p className="mt-2 text-3xl font-bold text-logica-rose">{formatCurrency(totalLoanValue)}</p>
+          <p className="text-xs text-logica-lilac">Saldo atual a pagar em empréstimos</p>
+        </div>
+        <div className={`${cardBaseClass} border-logica-purple/20 shadow-logica-purple/20`}>
+          <p className="text-xs font-semibold uppercase tracking-wide text-logica-lilac">Consórcios em R$</p>
+          <p className="mt-2 text-3xl font-bold text-logica-purple">{formatCurrency(totalConsortiumValue)}</p>
+          <p className="text-xs text-logica-lilac">Saldo devedor das cotas em aberto</p>
         </div>
         <div className={`${cardBaseClass} border-logica-purple/20 shadow-logica-purple/20`}>
           <p className="text-xs font-semibold uppercase tracking-wide text-logica-lilac">Dívida total</p>
@@ -153,7 +172,9 @@ export function Dashboard({
             </thead>
             <tbody className="divide-y divide-logica-lilac/20 text-logica-purple">
               {loans.map((loan) => {
-                const loanInstallments = installments.filter((item) => item.loanId === loan.id);
+                const loanInstallments = installments.filter(
+                  (item) => item.contractType === "loan" && item.contractId === loan.id
+                );
                 const nextInstallment = loanInstallments.find((item) => item.status !== "paga");
                 const lastInstallment = loanInstallments
                   .filter((item) => item.status === "paga")
