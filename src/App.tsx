@@ -16,8 +16,17 @@ function AppContent() {
   const { user, loading, isConfigured } = useAuth();
   const [view, setView] = useState<ViewKey>("dashboard");
   const [selectedCompany, setSelectedCompany] = useState<string | "all">("all");
-  const { companies, loans, installments, loading: dataLoading, error: dataError, refresh } =
-    useSupabaseData();
+  const {
+    companies,
+    loans,
+    installments,
+    loading: dataLoading,
+    error: dataError,
+    refresh,
+    saveCompany,
+    deleteCompany,
+    isUsingSupabase
+  } = useSupabaseData();
 
   const filteredLoans = useMemo(() => {
     if (selectedCompany === "all") return loans;
@@ -80,6 +89,9 @@ function AppContent() {
             companies={companies}
             selectedCompany={activeCompany}
             onSelectCompany={setSelectedCompany}
+            onSaveCompany={saveCompany}
+            onDeleteCompany={deleteCompany}
+            isUsingSupabase={isUsingSupabase}
           />
         )}
         {view === "loans" && (

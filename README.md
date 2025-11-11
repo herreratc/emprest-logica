@@ -25,13 +25,20 @@ Inclui autenticação via Supabase, dashboards interativos e utilitários para s
    # edite o arquivo criado com a URL e a chave anônima do seu projeto Supabase
    ```
 
-3. Execute o servidor de desenvolvimento:
+3. Aplique a estrutura de banco descrita em `supabase/schema.sql` usando o SQL Editor do Supabase ou a CLI:
+
+   ```bash
+   supabase db push --file supabase/schema.sql
+   # ou cole o conteúdo no editor SQL do painel e execute
+   ```
+
+4. Execute o servidor de desenvolvimento:
 
    ```bash
    npm run dev
    ```
 
-4. Acesse `http://localhost:5173` para visualizar a aplicação.
+5. Acesse `http://localhost:5173` para visualizar a aplicação.
 
 ## Scripts adicionais
 
@@ -52,7 +59,7 @@ src/
 
 ## Próximos passos sugeridos
 
-- Conectar formulários (empresas, empréstimos, usuários) com Supabase Database.
+- Implementar edição e criação de contratos de empréstimo diretamente pela interface.
 - Criar policies e edge functions para garantir segurança multiempresa.
 - Implementar telas responsivas no mobile com navegação otimizada.
 - Criar testes automatizados de integração (Vitest/Testing Library).
