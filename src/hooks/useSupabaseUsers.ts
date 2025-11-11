@@ -23,7 +23,6 @@ type DbUserProfile = {
   name: string;
   email: string;
   role: Role;
-  password?: string | null;
   created_at: string;
   updated_at: string;
 };
@@ -71,7 +70,7 @@ const mapUserFromDb = (record: DbUserProfile): UserProfile => ({
   name: record.name,
   email: record.email,
   role: record.role,
-  password: record.password ?? null,
+  password: null,
   createdAt: record.created_at,
   updatedAt: record.updated_at
 });
@@ -82,8 +81,7 @@ const mapUserToDb = (input: UpsertUserProfileInput): Record<string, unknown> => 
     user_id: input.userId,
     name: input.name,
     email: input.email,
-    role: input.role,
-    password: input.password ?? null
+    role: input.role
   };
 
   if (!payload.id) {
@@ -92,10 +90,6 @@ const mapUserToDb = (input: UpsertUserProfileInput): Record<string, unknown> => 
 
   if (!payload.user_id) {
     delete payload.user_id;
-  }
-
-  if (!payload.password) {
-    delete payload.password;
   }
 
   return payload;
@@ -211,7 +205,7 @@ export function useSupabaseUsers(): SupabaseUsersState {
           name: input.name,
           email: input.email,
           role: input.role,
-          password: resolvedPassword
+          password: hasClient && supabase ? null : resolvedPassword
         };
 
         if (!hasClient || !supabase) {
@@ -222,8 +216,7 @@ export function useSupabaseUsers(): SupabaseUsersState {
         const payload = mapUserToDb({
           ...input,
           id: input.id ?? undefined,
-          userId,
-          password: input.password
+          userId
         });
 
         const { data, error: upsertError } = await supabase

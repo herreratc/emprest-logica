@@ -1,5 +1,7 @@
+import { useState } from "react";
 import type { Company, Installment, Loan } from "../data/mockData";
 import { formatCurrency, formatDate } from "../utils/formatters";
+import type { MutationResult } from "../hooks/useSupabaseData";
 
 const cardBaseClass = "rounded-2xl border border-white/50 bg-white/70 p-5 shadow-lg backdrop-blur";
 
@@ -9,9 +11,23 @@ type DashboardProps = {
   onSelectCompany: (company: string | "all") => void;
   loans: Loan[];
   installments: Installment[];
+  onResetData: () => Promise<MutationResult<null>>;
+  isUsingSupabase: boolean;
 };
 
-export function Dashboard({ companies, selectedCompany, onSelectCompany, loans, installments }: DashboardProps) {
+type FeedbackState = { type: "success" | "error"; message: string } | null;
+
+export function Dashboard({
+  companies,
+  selectedCompany,
+  onSelectCompany,
+  loans,
+  installments,
+  onResetData,
+  isUsingSupabase
+}: DashboardProps) {
+  const [resetFeedback, setResetFeedback] = useState<FeedbackState>(null);
+  const [isResetting, setIsResetting] = useState(false);
   const overdueInstallments = installments.filter((installment) => installment.status === "vencida");
   const paidInstallments = installments.filter((installment) => installment.status === "paga");
   const totalDebt = loans.reduce((acc, loan) => acc + loan.amountToPay, 0);
@@ -19,6 +35,34 @@ export function Dashboard({ companies, selectedCompany, onSelectCompany, loans, 
   const companyName = selectedCompany === "all"
     ? "Todas as empresas"
     : companies.find((company) => company.id === selectedCompany)?.name ?? "Empresa";
+
+  const handleReset = async () => {
+    if (isResetting) return;
+    const confirmed = window.confirm(
+      "Confirma a remoção de todos os cadastros de empresas, empréstimos e parcelas?"
+    );
+    if (!confirmed) return;
+
+    setIsResetting(true);
+    setResetFeedback(null);
+
+    const result = await onResetData();
+
+    if (!result.success) {
+      setResetFeedback({ type: "error", message: `Falha ao limpar dados: ${result.error}` });
+      setIsResetting(false);
+      return;
+    }
+
+    onSelectCompany("all");
+    setResetFeedback({
+      type: "success",
+      message: isUsingSupabase
+        ? "Dados removidos do Supabase com sucesso."
+        : "Dados removidos do modo demonstração com sucesso."
+    });
+    setIsResetting(false);
+  };
 
   return (
     <div className="space-y-6">
@@ -29,19 +73,41 @@ export function Dashboard({ companies, selectedCompany, onSelectCompany, loans, 
             Indicadores consolidados dos empréstimos cadastrados na plataforma.
           </p>
         </div>
-        <select
-          value={selectedCompany}
-          onChange={(event) => onSelectCompany(event.target.value as typeof selectedCompany)}
-          className="rounded-full border border-logica-lilac bg-white px-4 py-2 text-sm font-medium text-logica-purple shadow"
-        >
-          <option value="all">Todas as empresas</option>
-          {companies.map((company) => (
-            <option key={company.id} value={company.id}>
-              {company.name}
-            </option>
-          ))}
-        </select>
+        <div className="flex flex-wrap items-center gap-3">
+          <select
+            value={selectedCompany}
+            onChange={(event) => onSelectCompany(event.target.value as typeof selectedCompany)}
+            className="rounded-full border border-logica-lilac bg-white px-4 py-2 text-sm font-medium text-logica-purple shadow"
+          >
+            <option value="all">Todas as empresas</option>
+            {companies.map((company) => (
+              <option key={company.id} value={company.id}>
+                {company.name}
+              </option>
+            ))}
+          </select>
+          <button
+            onClick={handleReset}
+            disabled={isResetting}
+            className="rounded-full border border-logica-rose px-4 py-2 text-sm font-semibold text-logica-rose transition hover:bg-logica-rose hover:text-white disabled:cursor-not-allowed disabled:opacity-60"
+            type="button"
+          >
+            {isResetting ? "Limpando..." : "Limpar dados"}
+          </button>
+        </div>
       </header>
+
+      {resetFeedback && (
+        <div
+          className={`rounded-2xl border px-4 py-3 text-sm ${
+            resetFeedback.type === "success"
+              ? "border-emerald-200 bg-emerald-50 text-emerald-700"
+              : "border-red-200 bg-red-50 text-red-700"
+          }`}
+        >
+          {resetFeedback.message}
+        </div>
+      )}
 
       <section className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
         <div className={`${cardBaseClass} border-logica-purple/20 shadow-logica-purple/20`}>
