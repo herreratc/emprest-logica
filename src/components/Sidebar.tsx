@@ -1,10 +1,5 @@
 import { clsx } from "clsx";
 
-type SidebarProps = {
-  activeView: string;
-  onChangeView: (view: string) => void;
-};
-
 const menuItems = [
   { key: "dashboard", label: "Dashboard" },
   { key: "companies", label: "Empresas" },
@@ -13,6 +8,13 @@ const menuItems = [
   { key: "users", label: "Usuários" },
   { key: "simulation", label: "Simulação" }
 ] as const;
+
+type SidebarView = (typeof menuItems)[number]["key"];
+
+type SidebarProps = {
+  activeView: SidebarView;
+  onChangeView: (view: SidebarView) => void;
+};
 
 export function Sidebar({ activeView, onChangeView }: SidebarProps) {
   return (
