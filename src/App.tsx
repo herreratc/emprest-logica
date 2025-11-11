@@ -25,6 +25,8 @@ function AppContent() {
     refresh,
     saveCompany,
     deleteCompany,
+    saveLoan,
+    deleteLoan,
     isUsingSupabase
   } = useSupabaseData();
 
@@ -100,6 +102,9 @@ function AppContent() {
             loans={filteredLoans}
             selectedCompany={selectedCompany}
             onSelectCompany={setSelectedCompany}
+            onSaveLoan={saveLoan}
+            onDeleteLoan={deleteLoan}
+            isUsingSupabase={isUsingSupabase}
           />
         )}
         {view === "installments" && (

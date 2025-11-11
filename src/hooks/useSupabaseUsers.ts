@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
-import { hasSupabaseConfig, supabase } from "../supabaseClient";
+import { hasSupabaseAdmin, hasSupabaseConfig, supabase, supabaseAdmin } from "../supabaseClient";
 import type { MutationResult } from "./useSupabaseData";
 
 export type Role = "master" | "gestor" | "financeiro";
@@ -10,6 +10,7 @@ export type UserProfile = {
   name: string;
   email: string;
   role: Role;
+  password?: string | null;
   createdAt?: string;
   updatedAt?: string;
 };
@@ -22,14 +23,36 @@ type DbUserProfile = {
   name: string;
   email: string;
   role: Role;
+  password?: string | null;
   created_at: string;
   updated_at: string;
 };
 
 const mockUsers: UserProfile[] = [
-  { id: "1", userId: null, name: "Ana Souza", email: "ana@logica.com", role: "master" },
-  { id: "2", userId: null, name: "Bruno Lima", email: "bruno@logica.com", role: "gestor" },
-  { id: "3", userId: null, name: "Carla Dias", email: "carla@logica.com", role: "financeiro" }
+  {
+    id: "1",
+    userId: null,
+    name: "Ana Souza",
+    email: "ana@logica.com",
+    role: "master",
+    password: "senha123"
+  },
+  {
+    id: "2",
+    userId: null,
+    name: "Bruno Lima",
+    email: "bruno@logica.com",
+    role: "gestor",
+    password: "senha123"
+  },
+  {
+    id: "3",
+    userId: null,
+    name: "Carla Dias",
+    email: "carla@logica.com",
+    role: "financeiro",
+    password: "senha123"
+  }
 ];
 
 const hasClient = hasSupabaseConfig && Boolean(supabase);
@@ -48,6 +71,7 @@ const mapUserFromDb = (record: DbUserProfile): UserProfile => ({
   name: record.name,
   email: record.email,
   role: record.role,
+  password: record.password ?? null,
   createdAt: record.created_at,
   updatedAt: record.updated_at
 });
@@ -58,7 +82,8 @@ const mapUserToDb = (input: UpsertUserProfileInput): Record<string, unknown> => 
     user_id: input.userId,
     name: input.name,
     email: input.email,
-    role: input.role
+    role: input.role,
+    password: input.password ?? null
   };
 
   if (!payload.id) {
@@ -67,6 +92,10 @@ const mapUserToDb = (input: UpsertUserProfileInput): Record<string, unknown> => 
 
   if (!payload.user_id) {
     delete payload.user_id;
+  }
+
+  if (!payload.password) {
+    delete payload.password;
   }
 
   return payload;
@@ -79,7 +108,7 @@ export type SupabaseUsersState = {
   isUsingSupabase: boolean;
   refresh: () => Promise<void>;
   saveUser: (input: UpsertUserProfileInput) => Promise<MutationResult<UserProfile>>;
-  deleteUser: (userId: string) => Promise<MutationResult<null>>;
+  deleteUser: (profile: UserProfile) => Promise<MutationResult<null>>;
 };
 
 export function useSupabaseUsers(): SupabaseUsersState {
@@ -124,42 +153,104 @@ export function useSupabaseUsers(): SupabaseUsersState {
 
   const saveUser = useCallback(
     async (input: UpsertUserProfileInput): Promise<MutationResult<UserProfile>> => {
-      const baseUser: UserProfile = {
-        id: input.id ?? ensureId(),
-        userId: input.userId ?? null,
-        name: input.name,
-        email: input.email,
-        role: input.role
+      const ensureUserId = async () => {
+        if (!hasSupabaseAdmin || !supabaseAdmin) {
+          return input.userId ?? null;
+        }
+
+        if (input.userId) {
+          const payload: {
+            email?: string;
+            password?: string;
+            user_metadata?: Record<string, unknown>;
+          } = {
+            email: input.email,
+            user_metadata: { name: input.name }
+          };
+
+          if (input.password) {
+            payload.password = input.password;
+          }
+
+          const { error: updateError } = await supabaseAdmin.auth.admin.updateUserById(input.userId, payload);
+
+          if (updateError) {
+            throw new Error(updateError.message);
+          }
+
+          return input.userId;
+        }
+
+        if (!input.password) {
+          return null;
+        }
+
+        const { data, error: createError } = await supabaseAdmin.auth.admin.createUser({
+          email: input.email,
+          password: input.password,
+          email_confirm: true,
+          user_metadata: { name: input.name }
+        });
+
+        if (createError) {
+          throw new Error(createError.message);
+        }
+
+        return data.user?.id ?? null;
       };
 
-      if (!hasClient || !supabase) {
-        setUsers((prev) => sortUsers([...(prev.filter((user) => user.id !== baseUser.id)), baseUser]));
-        return { success: true, data: baseUser };
+      try {
+        const previous = input.id ? users.find((user) => user.id === input.id) : undefined;
+        const resolvedPassword =
+          input.password !== undefined ? input.password ?? null : previous?.password ?? null;
+        const userId = await ensureUserId();
+
+        const baseUser: UserProfile = {
+          id: input.id ?? ensureId(),
+          userId,
+          name: input.name,
+          email: input.email,
+          role: input.role,
+          password: resolvedPassword
+        };
+
+        if (!hasClient || !supabase) {
+          setUsers((prev) => sortUsers([...(prev.filter((user) => user.id !== baseUser.id)), baseUser]));
+          return { success: true, data: baseUser };
+        }
+
+        const payload = mapUserToDb({
+          ...input,
+          id: input.id ?? undefined,
+          userId,
+          password: input.password
+        });
+
+        const { data, error: upsertError } = await supabase
+          .from("user_profiles")
+          .upsert(payload, { onConflict: "id" })
+          .select()
+          .single();
+
+        if (upsertError) {
+          return { success: false, error: upsertError.message };
+        }
+
+        const mapped = mapUserFromDb(data as DbUserProfile);
+        setUsers((prev) => sortUsers([...(prev.filter((user) => user.id !== mapped.id)), mapped]));
+        return { success: true, data: mapped };
+      } catch (error) {
+        const message = error instanceof Error ? error.message : String(error);
+        return { success: false, error: message };
       }
-
-      const payload = mapUserToDb({ ...input, id: input.id ?? undefined });
-
-      const { data, error: upsertError } = await supabase
-        .from("user_profiles")
-        .upsert(payload, { onConflict: "id" })
-        .select()
-        .single();
-
-      if (upsertError) {
-        return { success: false, error: upsertError.message };
-      }
-
-      const mapped = mapUserFromDb(data as DbUserProfile);
-      setUsers((prev) => sortUsers([...(prev.filter((user) => user.id !== mapped.id)), mapped]));
-      return { success: true, data: mapped };
     },
-    []
+    [users]
   );
 
   const deleteUser = useCallback(
-    async (userId: string): Promise<MutationResult<null>> => {
+    async (profile: UserProfile): Promise<MutationResult<null>> => {
       const removeFromState = () => {
-        setUsers((prev) => prev.filter((user) => user.id !== userId));
+        setUsers((prev) => prev.filter((user) => user.id !== profile.id));
       };
 
       if (!hasClient || !supabase) {
@@ -167,7 +258,14 @@ export function useSupabaseUsers(): SupabaseUsersState {
         return { success: true, data: null };
       }
 
-      const { error: deleteError } = await supabase.from("user_profiles").delete().eq("id", userId);
+      if (hasSupabaseAdmin && supabaseAdmin && profile.userId) {
+        const { error: adminError } = await supabaseAdmin.auth.admin.deleteUser(profile.userId);
+        if (adminError) {
+          return { success: false, error: adminError.message };
+        }
+      }
+
+      const { error: deleteError } = await supabase.from("user_profiles").delete().eq("id", profile.id);
 
       if (deleteError) {
         return { success: false, error: deleteError.message };
