@@ -4,13 +4,21 @@ import { Sidebar } from "./components/Sidebar";
 import { Dashboard } from "./components/Dashboard";
 import { CompaniesView } from "./components/CompaniesView";
 import { LoansView } from "./components/LoansView";
+import { ConsortiumsView } from "./components/ConsortiumsView";
 import { InstallmentsView } from "./components/InstallmentsView";
 import { SimulationView } from "./components/SimulationView";
 import { UsersView } from "./components/UsersView";
 import { LoginView } from "./components/LoginView";
 import { useSupabaseData } from "./hooks/useSupabaseData";
 
-type ViewKey = "dashboard" | "companies" | "loans" | "installments" | "simulation" | "users";
+type ViewKey =
+  | "dashboard"
+  | "companies"
+  | "loans"
+  | "consortiums"
+  | "installments"
+  | "simulation"
+  | "users";
 
 function AppContent() {
   const { user, loading, isConfigured } = useAuth();
@@ -19,6 +27,7 @@ function AppContent() {
   const {
     companies,
     loans,
+    consortiums,
     installments,
     loading: dataLoading,
     error: dataError,
@@ -27,6 +36,8 @@ function AppContent() {
     deleteCompany,
     saveLoan,
     deleteLoan,
+    saveConsortium,
+    deleteConsortium,
     resetData,
     isUsingSupabase
   } = useSupabaseData();
@@ -36,11 +47,25 @@ function AppContent() {
     return loans.filter((loan) => loan.companyId === selectedCompany);
   }, [selectedCompany, loans]);
 
+  const filteredConsortiums = useMemo(() => {
+    if (selectedCompany === "all") return consortiums;
+    return consortiums.filter((consortium) => consortium.companyId === selectedCompany);
+  }, [selectedCompany, consortiums]);
+
   const filteredInstallments = useMemo(() => {
     if (selectedCompany === "all") return installments;
     const loanIds = new Set(filteredLoans.map((loan) => loan.id));
-    return installments.filter((installment) => loanIds.has(installment.loanId));
-  }, [selectedCompany, installments, filteredLoans]);
+    const consortiumIds = new Set(filteredConsortiums.map((item) => item.id));
+    return installments.filter((installment) => {
+      if (installment.contractType === "loan") {
+        return loanIds.has(installment.contractId);
+      }
+      if (installment.contractType === "consortium") {
+        return consortiumIds.has(installment.contractId);
+      }
+      return false;
+    });
+  }, [selectedCompany, installments, filteredLoans, filteredConsortiums]);
 
   if (loading || dataLoading) {
     return (
@@ -84,6 +109,7 @@ function AppContent() {
             selectedCompany={selectedCompany}
             onSelectCompany={setSelectedCompany}
             loans={filteredLoans}
+            consortiums={filteredConsortiums}
             installments={filteredInstallments}
             onResetData={resetData}
             isUsingSupabase={isUsingSupabase}
@@ -110,11 +136,23 @@ function AppContent() {
             isUsingSupabase={isUsingSupabase}
           />
         )}
+        {view === "consortiums" && (
+          <ConsortiumsView
+            companies={companies}
+            consortiums={filteredConsortiums}
+            selectedCompany={selectedCompany}
+            onSelectCompany={setSelectedCompany}
+            onSaveConsortium={saveConsortium}
+            onDeleteConsortium={deleteConsortium}
+            isUsingSupabase={isUsingSupabase}
+          />
+        )}
         {view === "installments" && (
           <InstallmentsView
             companies={companies}
             installments={filteredInstallments}
             loans={filteredLoans}
+            consortiums={filteredConsortiums}
             selectedCompany={selectedCompany}
             onSelectCompany={setSelectedCompany}
           />
