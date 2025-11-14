@@ -275,6 +275,63 @@ const mapInstallmentToDb = (input: UpsertInstallmentInput): Record<string, unkno
   return payload;
 };
 
+const toIsoDate = (date: Date) => date.toISOString().split("T")[0] ?? "";
+
+const addMonths = (date: Date, months: number) => {
+  const reference = new Date(date);
+  reference.setMonth(reference.getMonth() + months);
+  return reference;
+};
+
+const parseIsoDate = (value: string): Date | null => {
+  if (!value) {
+    return null;
+  }
+
+  const [year, month, day] = value.split("-").map(Number);
+  if (!year || !month || !day) {
+    return null;
+  }
+
+  const parsed = new Date(year, (month ?? 1) - 1, day ?? 1);
+  return Number.isNaN(parsed.getTime()) ? null : parsed;
+};
+
+const generateLoanInstallments = (loan: Loan): Installment[] => {
+  const totalInstallments = loan.installments ?? 0;
+  if (totalInstallments <= 0) {
+    return [];
+  }
+
+  const baseDate = parseIsoDate(loan.startDate);
+  if (!baseDate) {
+    return [];
+  }
+
+  const referenceDate = getBrazilNow();
+  const installmentValue = loan.installmentValue ?? 0;
+  const installmentInterest = loan.interestPerInstallment ?? 0;
+
+  return Array.from({ length: totalInstallments }).map((_, index) => {
+    const dueDate = addMonths(baseDate, index);
+    const draftInstallment: Installment = {
+      id: ensureId(),
+      contractType: "loan",
+      contractId: loan.id,
+      sequence: index + 1,
+      date: toIsoDate(dueDate),
+      value: installmentValue,
+      status: "pendente",
+      interest: installmentInterest
+    };
+
+    return {
+      ...draftInstallment,
+      status: computeInstallmentAutoStatus(draftInstallment, referenceDate)
+    };
+  });
+};
+
 const computeInstallmentAutoStatus = (installment: Installment, referenceDate: Date): InstallmentStatus => {
   if (installment.status === "paga") {
     return "paga";
@@ -651,17 +708,27 @@ export function useSupabaseData(): SupabaseDataState {
 
   const upsertLoan = useCallback(
     async (input: UpsertLoanInput): Promise<MutationResult<Loan>> => {
+      const isCreating = !input.id;
       const baseLoan: Loan = { ...input, id: input.id ?? ensureId() };
       const normalizedLoan = recalculateLoanFromInstallments(baseLoan, installmentsRef.current);
 
       if (!hasClient || !supabase) {
-        applyContractsState(
-          [
-            ...loansRef.current.filter((loan) => loan.id !== normalizedLoan.id),
-            normalizedLoan
-          ],
-          undefined
-        );
+        const nextLoans = [
+          ...loansRef.current.filter((loan) => loan.id !== normalizedLoan.id),
+          normalizedLoan
+        ];
+
+        applyContractsState(nextLoans, undefined);
+
+        if (isCreating) {
+          const generatedInstallments = generateLoanInstallments(normalizedLoan);
+          if (generatedInstallments.length > 0) {
+            applyInstallmentsState([...installmentsRef.current, ...generatedInstallments], {
+              loans: nextLoans
+            });
+          }
+        }
+
         return { success: true, data: normalizedLoan };
       }
 
@@ -693,13 +760,40 @@ export function useSupabaseData(): SupabaseDataState {
           .upsert([mapLoanToDb({ ...recalculated })], { onConflict: "id" });
       }
 
-      applyContractsState(
-        [...loansRef.current.filter((loan) => loan.id !== recalculated.id), recalculated],
-        undefined
-      );
+      let generatedInstallments: Installment[] = [];
+      if (isCreating) {
+        generatedInstallments = generateLoanInstallments(recalculated);
+        if (generatedInstallments.length > 0) {
+          const installmentPayloads = generatedInstallments.map((installment) =>
+            mapInstallmentToDb({ ...installment })
+          );
+          const { error: installmentsError } = await supabase
+            .from("installments")
+            .upsert(installmentPayloads, { onConflict: "id" });
+
+          if (installmentsError) {
+            await supabase.from("loans").delete().eq("id", recalculated.id);
+            return { success: false, error: installmentsError.message };
+          }
+        }
+      }
+
+      const nextLoans = [
+        ...loansRef.current.filter((loan) => loan.id !== recalculated.id),
+        recalculated
+      ];
+
+      if (generatedInstallments.length > 0) {
+        applyInstallmentsState([...installmentsRef.current, ...generatedInstallments], {
+          loans: nextLoans
+        });
+      } else {
+        applyContractsState(nextLoans, undefined);
+      }
+
       return { success: true, data: recalculated };
     },
-    [applyContractsState]
+    [applyContractsState, applyInstallmentsState]
   );
 
   const removeLoan = useCallback(
