@@ -5,7 +5,7 @@ import type { MutationResult } from "../hooks/useSupabaseData";
 
 const cardClass = "rounded-2xl border border-logica-purple/20 bg-white/80 p-4 shadow-md backdrop-blur";
 const inputClass =
-  "w-full rounded-xl border border-logica-lilac/40 bg-white px-4 py-2 text-sm text-logica-purple focus:border-logica-purple focus:outline-none";
+  "w-full rounded-lg border border-logica-lilac/40 bg-white px-3 py-1.5 text-xs text-logica-purple focus:border-logica-purple focus:outline-none";
 
 const feedbackClass = (type: "success" | "error") =>
   `rounded-xl border px-4 py-2 text-sm ${
@@ -172,20 +172,8 @@ export function InstallmentsView({
               </option>
             ))}
           </select>
-          <button
-            type="button"
-            onClick={resetFilters}
-            className="rounded-full border border-logica-lilac px-4 py-2 text-sm font-semibold text-logica-purple"
-          >
-            Limpar filtros
-          </button>
         </div>
       </header>
-
-      <section className="rounded-2xl border border-emerald-200 bg-emerald-50 p-4 text-sm text-emerald-800">
-        Novos empréstimos criados na aba correspondente já recebem o cronograma de parcelas com base nas
-        informações do contrato.
-      </section>
 
       <section className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
         <div className={cardClass}>
@@ -209,9 +197,18 @@ export function InstallmentsView({
       </section>
 
       <section className="rounded-2xl border border-logica-purple/20 bg-white/90 p-6 shadow-lg">
-        <h2 className="text-lg font-semibold text-logica-purple">Filtros avançados</h2>
-        <div className="mt-4 grid gap-4 md:grid-cols-4">
-          <label className="text-sm text-logica-purple">
+        <div className="flex flex-wrap items-center justify-between gap-3">
+          <h2 className="text-lg font-semibold text-logica-purple">Filtros avançados</h2>
+          <button
+            type="button"
+            onClick={resetFilters}
+            className="rounded-full border border-logica-lilac px-4 py-2 text-xs font-semibold text-logica-purple"
+          >
+            Limpar filtros
+          </button>
+        </div>
+        <div className="mt-4 grid gap-3 sm:grid-cols-2 lg:grid-cols-5">
+          <label className="text-xs font-medium text-logica-purple">
             Status
             <select
               value={statusFilter}
@@ -224,7 +221,7 @@ export function InstallmentsView({
               <option value="vencida">Vencidas</option>
             </select>
           </label>
-          <label className="text-sm text-logica-purple">
+          <label className="text-xs font-medium text-logica-purple">
             Tipo de contrato
             <select
               value={contractTypeFilter}
@@ -236,7 +233,7 @@ export function InstallmentsView({
               <option value="consortium">Consórcios</option>
             </select>
           </label>
-          <label className="text-sm text-logica-purple">
+          <label className="text-xs font-medium text-logica-purple">
             Data início
             <input
               type="date"
@@ -245,7 +242,7 @@ export function InstallmentsView({
               className={`mt-1 ${inputClass}`}
             />
           </label>
-          <label className="text-sm text-logica-purple">
+          <label className="text-xs font-medium text-logica-purple">
             Data fim
             <input
               type="date"
@@ -254,7 +251,7 @@ export function InstallmentsView({
               className={`mt-1 ${inputClass}`}
             />
           </label>
-          <label className="text-sm text-logica-purple">
+          <label className="text-xs font-medium text-logica-purple">
             Contrato
             <select
               value={contractFilter}
@@ -315,7 +312,7 @@ export function InstallmentsView({
                     <span
                       className={`rounded-full px-3 py-1 text-xs font-semibold uppercase ${
                         installment.status === "paga"
-                          ? "bg-logica-purple/20 text-logica-purple"
+                          ? "bg-emerald-100 text-emerald-700"
                           : installment.status === "pendente"
                           ? "bg-logica-rose/20 text-logica-rose"
                           : "bg-red-100 text-red-600"
