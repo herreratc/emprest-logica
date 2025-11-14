@@ -39,7 +39,6 @@ function AppContent() {
     saveConsortium,
     deleteConsortium,
     deleteInstallment,
-    resetData,
     isUsingSupabase
   } = useSupabaseData();
 
@@ -112,8 +111,6 @@ function AppContent() {
             loans={filteredLoans}
             consortiums={filteredConsortiums}
             installments={filteredInstallments}
-            onResetData={resetData}
-            isUsingSupabase={isUsingSupabase}
           />
         )}
         {view === "companies" && (
