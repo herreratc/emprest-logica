@@ -38,6 +38,7 @@ function AppContent() {
     deleteLoan,
     saveConsortium,
     deleteConsortium,
+    deleteInstallment,
     resetData,
     isUsingSupabase
   } = useSupabaseData();
@@ -155,6 +156,7 @@ function AppContent() {
             consortiums={filteredConsortiums}
             selectedCompany={selectedCompany}
             onSelectCompany={setSelectedCompany}
+            onDeleteInstallment={deleteInstallment}
           />
         )}
         {view === "simulation" && <SimulationView />}
