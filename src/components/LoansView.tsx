@@ -80,8 +80,59 @@ const createInitialForm = (companyId?: string): LoanFormState => ({
 
 type FeedbackState = { type: "success" | "error"; message: string } | null;
 
+type SyncState = { fromDates: boolean; fromInstallments: boolean };
+
 const inputClass =
   "w-full rounded-xl border border-logica-lilac/40 bg-white px-4 py-2 text-sm text-logica-purple focus:border-logica-purple focus:outline-none";
+
+const parseDateInput = (value: string): Date | null => {
+  if (!value) return null;
+  const [year, month, day] = value.split("-").map(Number);
+  if (!year || !month || !day) return null;
+  const parsed = new Date(year, month - 1, day);
+  return Number.isNaN(parsed.getTime()) ? null : parsed;
+};
+
+const formatDateInput = (date: Date): string => {
+  const year = date.getFullYear();
+  const month = `${date.getMonth() + 1}`.padStart(2, "0");
+  const day = `${date.getDate()}`.padStart(2, "0");
+  return `${year}-${month}-${day}`;
+};
+
+const addMonthsToDate = (date: Date, months: number) => {
+  const reference = new Date(date);
+  reference.setMonth(reference.getMonth() + months);
+  return reference;
+};
+
+const calculateInstallmentsFromDates = (startDate: string, endDate: string): number | null => {
+  const start = parseDateInput(startDate);
+  const end = parseDateInput(endDate);
+  if (!start || !end || end < start) {
+    return null;
+  }
+
+  let count = 0;
+  let cursor = new Date(start);
+  while (cursor <= end) {
+    count += 1;
+    cursor = addMonthsToDate(cursor, 1);
+    if (count > 600) break;
+  }
+
+  return count > 0 ? count : null;
+};
+
+const calculateEndDateFromInstallments = (startDate: string, installments: number): string | null => {
+  const start = parseDateInput(startDate);
+  if (!start || installments <= 0) {
+    return null;
+  }
+
+  const end = addMonthsToDate(start, installments - 1);
+  return formatDateInput(end);
+};
 
 export function LoansView({
   companies,
@@ -99,6 +150,11 @@ export function LoansView({
   const [isSaving, setIsSaving] = useState(false);
   const [isDeleting, setIsDeleting] = useState(false);
   const [isFormVisible, setIsFormVisible] = useState(false);
+  const [pendingSync, setPendingSync] = useState<SyncState>({
+    fromDates: false,
+    fromInstallments: false
+  });
+  const [lastManualTarget, setLastManualTarget] = useState<"endDate" | "installments" | null>(null);
 
   const toStringValue = (value: number | string | null | undefined) =>
     value === null || value === undefined ? "" : String(value);
@@ -139,19 +195,58 @@ export function LoansView({
         currentDate: editing.currentDate,
         contractStart: editing.contractStart
       });
-      return;
-    }
-
-    if (!isFormVisible) {
+    } else if (!isFormVisible) {
       setForm(createInitialForm());
+    } else {
+      setForm((prev) => ({
+        ...prev,
+        companyId: selectedCompany === "all" ? "" : selectedCompany
+      }));
+    }
+
+    setPendingSync({ fromDates: false, fromInstallments: false });
+    setLastManualTarget(null);
+  }, [editing, isFormVisible, selectedCompany]);
+
+  useEffect(() => {
+    if (!pendingSync.fromDates) return;
+
+    if (!form.startDate || !form.endDate) {
+      setPendingSync((prev) => (prev.fromDates ? { ...prev, fromDates: false } : prev));
       return;
     }
 
-    setForm((prev) => ({
-      ...prev,
-      companyId: selectedCompany === "all" ? "" : selectedCompany
-    }));
-  }, [editing, isFormVisible, selectedCompany]);
+    const computedInstallments = calculateInstallmentsFromDates(form.startDate, form.endDate);
+    setPendingSync((prev) => (prev.fromDates ? { ...prev, fromDates: false } : prev));
+
+    if (!computedInstallments) {
+      return;
+    }
+
+    const stringValue = String(computedInstallments);
+    if (stringValue !== form.installments) {
+      setForm((prev) => ({ ...prev, installments: stringValue }));
+    }
+  }, [pendingSync.fromDates, form.startDate, form.endDate, form.installments]);
+
+  useEffect(() => {
+    if (!pendingSync.fromInstallments) return;
+
+    if (!form.startDate || !form.installments) {
+      setPendingSync((prev) => (prev.fromInstallments ? { ...prev, fromInstallments: false } : prev));
+      return;
+    }
+
+    const numericInstallments = parseInteger(form.installments);
+    const calculatedEndDate = calculateEndDateFromInstallments(form.startDate, numericInstallments);
+    setPendingSync((prev) => (prev.fromInstallments ? { ...prev, fromInstallments: false } : prev));
+
+    if (!calculatedEndDate || calculatedEndDate === form.endDate) {
+      return;
+    }
+
+    setForm((prev) => ({ ...prev, endDate: calculatedEndDate }));
+  }, [pendingSync.fromInstallments, form.startDate, form.installments, form.endDate]);
 
   const handleCreate = () => {
     setEditing(null);
@@ -482,7 +577,23 @@ export function LoansView({
                 type="date"
                 className={inputClass}
                 value={form.startDate}
-                onChange={(event) => setForm((prev) => ({ ...prev, startDate: event.target.value }))}
+                onChange={(event) => {
+                  const nextValue = event.target.value;
+                  setForm((prev) => ({ ...prev, startDate: nextValue }));
+                  if (lastManualTarget === "installments") {
+                    setPendingSync((prev) =>
+                      prev.fromInstallments ? prev : { ...prev, fromInstallments: true }
+                    );
+                  } else if (lastManualTarget === "endDate") {
+                    setPendingSync((prev) => (prev.fromDates ? prev : { ...prev, fromDates: true }));
+                  } else if (form.endDate) {
+                    setPendingSync((prev) => (prev.fromDates ? prev : { ...prev, fromDates: true }));
+                  } else if (form.installments) {
+                    setPendingSync((prev) =>
+                      prev.fromInstallments ? prev : { ...prev, fromInstallments: true }
+                    );
+                  }
+                }}
                 disabled={isSaving || isDeleting}
                 required
               />
@@ -493,7 +604,12 @@ export function LoansView({
                 type="date"
                 className={inputClass}
                 value={form.endDate}
-                onChange={(event) => setForm((prev) => ({ ...prev, endDate: event.target.value }))}
+                onChange={(event) => {
+                  const nextValue = event.target.value;
+                  setForm((prev) => ({ ...prev, endDate: nextValue }));
+                  setPendingSync((prev) => (prev.fromDates ? prev : { ...prev, fromDates: true }));
+                  setLastManualTarget("endDate");
+                }}
                 disabled={isSaving || isDeleting}
                 required
               />
@@ -505,7 +621,14 @@ export function LoansView({
                 min={0}
                 className={inputClass}
                 value={form.installments}
-                onChange={(event) => setForm((prev) => ({ ...prev, installments: event.target.value }))}
+                onChange={(event) => {
+                  const nextValue = event.target.value;
+                  setForm((prev) => ({ ...prev, installments: nextValue }));
+                  setPendingSync((prev) =>
+                    prev.fromInstallments ? prev : { ...prev, fromInstallments: true }
+                  );
+                  setLastManualTarget("installments");
+                }}
                 disabled={isSaving || isDeleting}
                 required
               />

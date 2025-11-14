@@ -339,12 +339,15 @@ const computeInstallmentAutoStatus = (installment: Installment, referenceDate: D
 
   const [year, month, day] = installment.date.split("-").map(Number);
   const dueDate = new Date(year, (month ?? 1) - 1, day ?? 1);
-  const startOfToday = new Date(referenceDate.getFullYear(), referenceDate.getMonth(), referenceDate.getDate());
-  const endOfToday = new Date(startOfToday.getTime() + 86_399_999);
-
-  if (dueDate < startOfToday) {
-    return "vencida";
-  }
+  const endOfToday = new Date(
+    referenceDate.getFullYear(),
+    referenceDate.getMonth(),
+    referenceDate.getDate(),
+    23,
+    59,
+    59,
+    999
+  );
 
   if (dueDate <= endOfToday) {
     return "paga";
