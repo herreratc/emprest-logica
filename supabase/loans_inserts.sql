@@ -1,0 +1,129 @@
+-- Script para inserir empréstimos e parcelas no Supabase via SQL Editor.
+-- Ajuste o filtro da CTE target_company para apontar a empresa correta caso necessário.
+
+with target_company as (
+  select id
+  from public.companies
+  where name = 'Logica Distribuicao'
+  limit 1
+),
+loans_data as (
+  select * from (values
+      ('Capital de Giro FGI', 'Bradesco', '237/1497/2806', 'Operação Congelados', 731292.36, 524013.85, 731292.36, 207278.51, 46, 15897.66, 11391.61, 4506.05, 0.0125, 0.1608, 28, 18, 445134.48, 286157.88, '2025-10-01'::date, '2023-07-16'::date, '2024-07-26'::date, '2028-06-26'::date, '[{"sequence": 1, "date": "2024-07-26", "status": "paga"}, {"sequence": 2, "date": "2024-07-26", "status": "paga"}, {"sequence": 3, "date": "2024-07-26", "status": "paga"}, {"sequence": 4, "date": "2024-07-26", "status": "paga"}, {"sequence": 5, "date": "2024-07-26", "status": "paga"}, {"sequence": 6, "date": "2024-07-26", "status": "paga"}, {"sequence": 7, "date": "2024-07-26", "status": "paga"}, {"sequence": 8, "date": "2024-08-23", "status": "paga"}, {"sequence": 9, "date": "2024-08-23", "status": "paga"}, {"sequence": 10, "date": "2024-08-23", "status": "paga"}, {"sequence": 11, "date": "2024-08-23", "status": "paga"}, {"sequence": 12, "date": "2024-08-23", "status": "paga"}, {"sequence": 13, "date": "2024-10-11", "status": "paga"}, {"sequence": 14, "date": "2024-10-11", "status": "paga"}, {"sequence": 15, "date": "2024-10-11", "status": "paga"}, {"sequence": 16, "date": "2024-10-11", "status": "paga"}, {"sequence": 17, "date": "2025-02-07", "status": "paga"}, {"sequence": 18, "date": "2025-02-07", "status": "paga"}, {"sequence": 19, "date": "2025-02-07", "status": "paga"}, {"sequence": 20, "date": "2025-02-07", "status": "paga"}, {"sequence": 21, "date": "2025-02-07", "status": "paga"}, {"sequence": 22, "date": "2025-02-07", "status": "paga"}, {"sequence": 23, "date": "2025-02-07", "status": "paga"}, {"sequence": 24, "date": "2025-07-17", "status": "paga"}, {"sequence": 25, "date": "2025-07-17", "status": "paga"}, {"sequence": 26, "date": "2025-07-17", "status": "paga"}, {"sequence": 27, "date": "2025-07-17", "status": "paga"}, {"sequence": 28, "date": "2025-07-17", "status": "paga"}, {"sequence": 29, "date": "2027-01-26", "status": "pendente"}, {"sequence": 30, "date": "2027-02-26", "status": "pendente"}, {"sequence": 31, "date": "2027-03-26", "status": "pendente"}, {"sequence": 32, "date": "2027-04-26", "status": "pendente"}, {"sequence": 33, "date": "2027-05-26", "status": "pendente"}, {"sequence": 34, "date": "2027-06-26", "status": "pendente"}, {"sequence": 35, "date": "2027-07-26", "status": "pendente"}, {"sequence": 36, "date": "2027-08-26", "status": "pendente"}, {"sequence": 37, "date": "2027-09-26", "status": "pendente"}, {"sequence": 38, "date": "2027-10-26", "status": "pendente"}, {"sequence": 39, "date": "2027-11-26", "status": "pendente"}, {"sequence": 40, "date": "2027-12-26", "status": "pendente"}, {"sequence": 41, "date": "2028-01-26", "status": "pendente"}, {"sequence": 42, "date": "2028-02-26", "status": "pendente"}, {"sequence": 43, "date": "2028-03-26", "status": "pendente"}, {"sequence": 44, "date": "2028-04-26", "status": "pendente"}, {"sequence": 45, "date": "2028-05-26", "status": "pendente"}, {"sequence": 46, "date": "2028-06-26", "status": "pendente"}]'::jsonb),
+      ('Capital de Giro FGI', 'Bradesco', '237/1497/1000', 'Operação Congelados', 1462585.18, 1048027.68, 1462585.18, 414557.50, 46, 31795.33, 22783.21, 9012.12, 0.0125, 0.1608, 28, 18, 890269.24, 572315.94, '2025-10-01'::date, '2023-07-16'::date, '2024-06-27'::date, '2028-06-26'::date, '[{"sequence": 1, "date": "2024-06-27", "status": "paga"}, {"sequence": 2, "date": "2024-06-27", "status": "paga"}, {"sequence": 3, "date": "2024-06-27", "status": "paga"}, {"sequence": 4, "date": "2024-06-27", "status": "paga"}, {"sequence": 5, "date": "2024-07-26", "status": "paga"}, {"sequence": 6, "date": "2024-07-26", "status": "paga"}, {"sequence": 7, "date": "2024-07-26", "status": "paga"}, {"sequence": 8, "date": "2024-08-16", "status": "paga"}, {"sequence": 9, "date": "2024-08-16", "status": "paga"}, {"sequence": 10, "date": "2024-08-16", "status": "paga"}, {"sequence": 11, "date": "2024-10-02", "status": "paga"}, {"sequence": 12, "date": "2024-10-02", "status": "paga"}, {"sequence": 13, "date": "2024-10-11", "status": "paga"}, {"sequence": 14, "date": "2024-10-11", "status": "paga"}, {"sequence": 15, "date": "2024-10-11", "status": "paga"}, {"sequence": 16, "date": "2024-10-11", "status": "paga"}, {"sequence": 17, "date": "2025-01-16", "status": "paga"}, {"sequence": 18, "date": "2025-01-16", "status": "paga"}, {"sequence": 19, "date": "2025-01-16", "status": "paga"}, {"sequence": 20, "date": "2025-01-16", "status": "paga"}, {"sequence": 21, "date": "2025-01-16", "status": "paga"}, {"sequence": 22, "date": "2025-01-16", "status": "paga"}, {"sequence": 23, "date": "2025-01-16", "status": "paga"}, {"sequence": 24, "date": "2025-07-17", "status": "paga"}, {"sequence": 25, "date": "2025-07-17", "status": "paga"}, {"sequence": 26, "date": "2025-07-17", "status": "paga"}, {"sequence": 27, "date": "2025-07-17", "status": "paga"}, {"sequence": 28, "date": "2025-07-17", "status": "paga"}, {"sequence": 29, "date": "2027-01-26", "status": "pendente"}, {"sequence": 30, "date": "2027-02-26", "status": "pendente"}, {"sequence": 31, "date": "2027-03-26", "status": "pendente"}, {"sequence": 32, "date": "2027-04-26", "status": "pendente"}, {"sequence": 33, "date": "2027-05-26", "status": "pendente"}, {"sequence": 34, "date": "2027-06-26", "status": "pendente"}, {"sequence": 35, "date": "2027-07-26", "status": "pendente"}, {"sequence": 36, "date": "2027-08-26", "status": "pendente"}, {"sequence": 37, "date": "2027-09-26", "status": "pendente"}, {"sequence": 38, "date": "2027-10-26", "status": "pendente"}, {"sequence": 39, "date": "2027-11-26", "status": "pendente"}, {"sequence": 40, "date": "2027-12-26", "status": "pendente"}, {"sequence": 41, "date": "2028-01-26", "status": "pendente"}, {"sequence": 42, "date": "2028-02-26", "status": "pendente"}, {"sequence": 43, "date": "2028-03-26", "status": "pendente"}, {"sequence": 44, "date": "2028-04-26", "status": "pendente"}, {"sequence": 45, "date": "2028-05-26", "status": "pendente"}, {"sequence": 46, "date": "2028-06-26", "status": "pendente"}]'::jsonb),
+      ('CDC', 'Itaú', '288504', 'Operação Congelados', 502468.20, 355000.00, 502468.20, 147468.20, 60, 8374.47, 5916.67, 2457.80, 0.0111, 0.1416, 21, 39, 175863.87, 326604.33, '2025-10-01'::date, '2024-01-19'::date, '2024-01-19'::date, '2028-12-19'::date, '[{"sequence": 1, "date": "2024-01-19", "status": "paga"}, {"sequence": 2, "date": "2024-02-19", "status": "paga"}, {"sequence": 3, "date": "2024-03-19", "status": "paga"}, {"sequence": 4, "date": "2024-04-19", "status": "paga"}, {"sequence": 5, "date": "2024-05-19", "status": "paga"}, {"sequence": 6, "date": "2024-06-19", "status": "paga"}, {"sequence": 7, "date": "2024-07-19", "status": "paga"}, {"sequence": 8, "date": "2024-08-19", "status": "paga"}, {"sequence": 9, "date": "2024-09-19", "status": "paga"}, {"sequence": 10, "date": "2024-10-19", "status": "paga"}, {"sequence": 11, "date": "2024-11-19", "status": "paga"}, {"sequence": 12, "date": "2024-12-19", "status": "paga"}, {"sequence": 13, "date": "2025-01-19", "status": "paga"}, {"sequence": 14, "date": "2025-02-19", "status": "paga"}, {"sequence": 15, "date": "2025-03-19", "status": "paga"}, {"sequence": 16, "date": "2025-04-19", "status": "paga"}, {"sequence": 17, "date": "2025-05-19", "status": "paga"}, {"sequence": 18, "date": "2025-06-19", "status": "paga"}, {"sequence": 19, "date": "2025-07-19", "status": "paga"}, {"sequence": 20, "date": "2025-08-19", "status": "paga"}, {"sequence": 21, "date": "2025-09-19", "status": "paga"}, {"sequence": 22, "date": "2025-10-19", "status": "pendente"}, {"sequence": 23, "date": "2025-11-19", "status": "pendente"}, {"sequence": 24, "date": "2025-12-19", "status": "pendente"}, {"sequence": 25, "date": "2026-01-19", "status": "pendente"}, {"sequence": 26, "date": "2026-02-19", "status": "pendente"}, {"sequence": 27, "date": "2026-03-19", "status": "pendente"}, {"sequence": 28, "date": "2026-04-19", "status": "pendente"}, {"sequence": 29, "date": "2026-05-19", "status": "pendente"}, {"sequence": 30, "date": "2026-06-19", "status": "pendente"}, {"sequence": 31, "date": "2026-07-19", "status": "pendente"}, {"sequence": 32, "date": "2026-08-19", "status": "pendente"}, {"sequence": 33, "date": "2026-09-19", "status": "pendente"}, {"sequence": 34, "date": "2026-10-19", "status": "pendente"}, {"sequence": 35, "date": "2026-11-19", "status": "pendente"}, {"sequence": 36, "date": "2026-12-19", "status": "pendente"}, {"sequence": 37, "date": "2027-01-19", "status": "pendente"}, {"sequence": 38, "date": "2027-02-19", "status": "pendente"}, {"sequence": 39, "date": "2027-03-19", "status": "pendente"}, {"sequence": 40, "date": "2027-04-19", "status": "pendente"}, {"sequence": 41, "date": "2027-05-19", "status": "pendente"}, {"sequence": 42, "date": "2027-06-19", "status": "pendente"}, {"sequence": 43, "date": "2027-07-19", "status": "pendente"}, {"sequence": 44, "date": "2027-08-19", "status": "pendente"}, {"sequence": 45, "date": "2027-09-19", "status": "pendente"}, {"sequence": 46, "date": "2027-10-19", "status": "pendente"}, {"sequence": 47, "date": "2027-11-19", "status": "pendente"}, {"sequence": 48, "date": "2027-12-19", "status": "pendente"}, {"sequence": 49, "date": "2028-01-19", "status": "pendente"}, {"sequence": 50, "date": "2028-02-19", "status": "pendente"}, {"sequence": 51, "date": "2028-03-19", "status": "pendente"}, {"sequence": 52, "date": "2028-04-19", "status": "pendente"}, {"sequence": 53, "date": "2028-05-19", "status": "pendente"}, {"sequence": 54, "date": "2028-06-19", "status": "pendente"}, {"sequence": 55, "date": "2028-07-19", "status": "pendente"}, {"sequence": 56, "date": "2028-08-19", "status": "pendente"}, {"sequence": 57, "date": "2028-09-19", "status": "pendente"}, {"sequence": 58, "date": "2028-10-19", "status": "pendente"}, {"sequence": 59, "date": "2028-11-19", "status": "pendente"}, {"sequence": 60, "date": "2028-12-19", "status": "pendente"}]'::jsonb),
+      ('BNDES', 'Bradesco', 'Finame Materiais', 'Operação Congelados', 540225.75, 540225.75, 540225.75, 0.00, 36, 15006.27, 15006.27, 0.00, 0.0122, 0.1571, 4, 32, 60025.08, 480200.64, '2025-10-01'::date, '2025-06-16'::date, '2025-06-16'::date, '2028-05-16'::date, '[{"sequence": 1, "date": "2025-06-16", "status": "paga"}, {"sequence": 2, "date": "2025-07-16", "status": "paga"}, {"sequence": 3, "date": "2025-08-16", "status": "paga"}, {"sequence": 4, "date": "2025-09-16", "status": "paga"}, {"sequence": 5, "date": "2025-10-16", "status": "pendente"}, {"sequence": 6, "date": "2025-11-16", "status": "pendente"}, {"sequence": 7, "date": "2025-12-16", "status": "pendente"}, {"sequence": 8, "date": "2026-01-16", "status": "pendente"}, {"sequence": 9, "date": "2026-02-16", "status": "pendente"}, {"sequence": 10, "date": "2026-03-16", "status": "pendente"}, {"sequence": 11, "date": "2026-04-16", "status": "pendente"}, {"sequence": 12, "date": "2026-05-16", "status": "pendente"}, {"sequence": 13, "date": "2026-06-16", "status": "pendente"}, {"sequence": 14, "date": "2026-07-16", "status": "pendente"}, {"sequence": 15, "date": "2026-08-16", "status": "pendente"}, {"sequence": 16, "date": "2026-09-16", "status": "pendente"}, {"sequence": 17, "date": "2026-10-16", "status": "pendente"}, {"sequence": 18, "date": "2026-11-16", "status": "pendente"}, {"sequence": 19, "date": "2026-12-16", "status": "pendente"}, {"sequence": 20, "date": "2027-01-16", "status": "pendente"}, {"sequence": 21, "date": "2027-02-16", "status": "pendente"}, {"sequence": 22, "date": "2027-03-16", "status": "pendente"}, {"sequence": 23, "date": "2027-04-16", "status": "pendente"}, {"sequence": 24, "date": "2027-05-16", "status": "pendente"}, {"sequence": 25, "date": "2027-06-16", "status": "pendente"}, {"sequence": 26, "date": "2027-07-16", "status": "pendente"}, {"sequence": 27, "date": "2027-08-16", "status": "pendente"}, {"sequence": 28, "date": "2027-09-16", "status": "pendente"}, {"sequence": 29, "date": "2027-10-16", "status": "pendente"}, {"sequence": 30, "date": "2027-11-16", "status": "pendente"}, {"sequence": 31, "date": "2027-12-16", "status": "pendente"}, {"sequence": 32, "date": "2028-01-16", "status": "pendente"}, {"sequence": 33, "date": "2028-02-16", "status": "pendente"}, {"sequence": 34, "date": "2028-03-16", "status": "pendente"}, {"sequence": 35, "date": "2028-04-16", "status": "pendente"}, {"sequence": 36, "date": "2028-05-16", "status": "pendente"}]'::jsonb),
+      ('CDC', 'Mercedes (Prodoeste)', '1190550610', 'Compra Caminhão Triangulo M.', 412845.64, 292000.00, 412845.64, 120845.64, 60, 6880.76, 4866.67, 2014.09, 0.0123, 0.1476, 1, 59, 6880.76, 405964.84, '2025-10-01'::date, '2025-09-04'::date, '2025-09-04'::date, '2030-08-04'::date, '[{"sequence": 1, "date": "2025-09-04", "status": "paga"}, {"sequence": 2, "date": "2025-10-04", "status": "pendente"}, {"sequence": 3, "date": "2025-11-04", "status": "pendente"}, {"sequence": 4, "date": "2025-12-04", "status": "pendente"}, {"sequence": 5, "date": "2026-01-04", "status": "pendente"}, {"sequence": 6, "date": "2026-02-04", "status": "pendente"}, {"sequence": 7, "date": "2026-03-04", "status": "pendente"}, {"sequence": 8, "date": "2026-04-04", "status": "pendente"}, {"sequence": 9, "date": "2026-05-04", "status": "pendente"}, {"sequence": 10, "date": "2026-06-04", "status": "pendente"}, {"sequence": 11, "date": "2026-07-04", "status": "pendente"}, {"sequence": 12, "date": "2026-08-04", "status": "pendente"}, {"sequence": 13, "date": "2026-09-04", "status": "pendente"}, {"sequence": 14, "date": "2026-10-04", "status": "pendente"}, {"sequence": 15, "date": "2026-11-04", "status": "pendente"}, {"sequence": 16, "date": "2026-12-04", "status": "pendente"}, {"sequence": 17, "date": "2027-01-04", "status": "pendente"}, {"sequence": 18, "date": "2027-02-04", "status": "pendente"}, {"sequence": 19, "date": "2027-03-04", "status": "pendente"}, {"sequence": 20, "date": "2027-04-04", "status": "pendente"}, {"sequence": 21, "date": "2027-05-04", "status": "pendente"}, {"sequence": 22, "date": "2027-06-04", "status": "pendente"}, {"sequence": 23, "date": "2027-07-04", "status": "pendente"}, {"sequence": 24, "date": "2027-08-04", "status": "pendente"}, {"sequence": 25, "date": "2027-09-04", "status": "pendente"}, {"sequence": 26, "date": "2027-10-04", "status": "pendente"}, {"sequence": 27, "date": "2027-11-04", "status": "pendente"}, {"sequence": 28, "date": "2027-12-04", "status": "pendente"}, {"sequence": 29, "date": "2028-01-04", "status": "pendente"}, {"sequence": 30, "date": "2028-02-04", "status": "pendente"}, {"sequence": 31, "date": "2028-03-04", "status": "pendente"}, {"sequence": 32, "date": "2028-04-04", "status": "pendente"}, {"sequence": 33, "date": "2028-05-04", "status": "pendente"}, {"sequence": 34, "date": "2028-06-04", "status": "pendente"}, {"sequence": 35, "date": "2028-07-04", "status": "pendente"}, {"sequence": 36, "date": "2028-08-04", "status": "pendente"}, {"sequence": 37, "date": "2028-09-04", "status": "pendente"}, {"sequence": 38, "date": "2028-10-04", "status": "pendente"}, {"sequence": 39, "date": "2028-11-04", "status": "pendente"}, {"sequence": 40, "date": "2028-12-04", "status": "pendente"}, {"sequence": 41, "date": "2029-01-04", "status": "pendente"}, {"sequence": 42, "date": "2029-02-04", "status": "pendente"}, {"sequence": 43, "date": "2029-03-04", "status": "pendente"}, {"sequence": 44, "date": "2029-04-04", "status": "pendente"}, {"sequence": 45, "date": "2029-05-04", "status": "pendente"}, {"sequence": 46, "date": "2029-06-04", "status": "pendente"}, {"sequence": 47, "date": "2029-07-04", "status": "pendente"}, {"sequence": 48, "date": "2029-08-04", "status": "pendente"}, {"sequence": 49, "date": "2029-09-04", "status": "pendente"}, {"sequence": 50, "date": "2029-10-04", "status": "pendente"}, {"sequence": 51, "date": "2029-11-04", "status": "pendente"}, {"sequence": 52, "date": "2029-12-04", "status": "pendente"}, {"sequence": 53, "date": "2030-01-04", "status": "pendente"}, {"sequence": 54, "date": "2030-02-04", "status": "pendente"}, {"sequence": 55, "date": "2030-03-04", "status": "pendente"}, {"sequence": 56, "date": "2030-04-04", "status": "pendente"}, {"sequence": 57, "date": "2030-05-04", "status": "pendente"}, {"sequence": 58, "date": "2030-06-04", "status": "pendente"}, {"sequence": 59, "date": "2030-07-04", "status": "pendente"}, {"sequence": 60, "date": "2030-08-04", "status": "pendente"}]'::jsonb)
+  ) as data (
+    operation,
+    bank,
+    operation_number,
+    reference,
+    total_value,
+    upfront_value,
+    financed_value,
+    interest_value,
+    installments,
+    installment_value,
+    installment_value_no_interest,
+    interest_per_installment,
+    nominal_rate,
+    effective_annual_rate,
+    paid_installments,
+    remaining_installments,
+    amount_paid,
+    amount_to_pay,
+    as_of_date,
+    contract_start,
+    start_date,
+    end_date,
+    installments_json
+  )
+),
+inserted_loans as (
+  insert into public.loans (
+    company_id,
+    reference,
+    bank,
+    total_value,
+    start_date,
+    end_date,
+    status,
+    operation,
+    operation_number,
+    upfront_value,
+    financed_value,
+    interest_value,
+    installments,
+    installment_value,
+    installment_value_no_interest,
+    interest_per_installment,
+    nominal_rate,
+    effective_annual_rate,
+    paid_installments,
+    remaining_installments,
+    amount_paid,
+    amount_to_pay,
+    as_of_date,
+    contract_start
+  )
+  select
+    target_company.id,
+    data.reference,
+    data.bank,
+    data.total_value,
+    data.start_date,
+    data.end_date,
+    'ativo',
+    data.operation,
+    data.operation_number,
+    data.upfront_value,
+    data.financed_value,
+    data.interest_value,
+    data.installments,
+    data.installment_value,
+    data.installment_value_no_interest,
+    data.interest_per_installment,
+    data.nominal_rate,
+    data.effective_annual_rate,
+    data.paid_installments,
+    data.remaining_installments,
+    data.amount_paid,
+    data.amount_to_pay,
+    data.as_of_date,
+    data.contract_start
+  from target_company
+  cross join loans_data data
+  returning id, operation_number
+),
+installments_payload as (
+  select
+    il.id as loan_id,
+    data.installment_value,
+    data.interest_per_installment,
+    (inst->>'sequence')::int as sequence,
+    (inst->>'date')::date as date,
+    lower(inst->>'status') as raw_status
+  from inserted_loans il
+  join loans_data data on data.operation_number = il.operation_number
+  cross join lateral jsonb_array_elements(data.installments_json) as inst
+)
+insert into public.installments (
+  contract_type,
+  contract_id,
+  sequence,
+  date,
+  value,
+  status,
+  interest
+)
+select
+  'loan',
+  loan_id,
+  sequence,
+  date,
+  installment_value,
+  case when raw_status = 'paga' then 'paga' else 'pendente' end,
+  greatest(0, interest_per_installment)
+from installments_payload
+order by loan_id, sequence;
