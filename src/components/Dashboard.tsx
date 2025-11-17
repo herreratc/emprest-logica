@@ -2,6 +2,15 @@ import { useMemo } from "react";
 import type { Company, Consortium, Installment, Loan } from "../data/mockData";
 import { formatCurrency } from "../utils/formatters";
 
+const scheduleDateFormatter = new Intl.DateTimeFormat("pt-BR", {
+  day: "2-digit",
+  month: "short"
+});
+
+const monthReferenceFormatter = new Intl.DateTimeFormat("pt-BR", {
+  month: "short"
+});
+
 const cardBaseClass =
   "rounded-2xl border border-white/50 bg-white/80 p-5 shadow-lg shadow-black/5 backdrop-blur transition";
 
@@ -22,44 +31,38 @@ export function Dashboard({
   consortiums,
   installments
 }: DashboardProps) {
-  const overdueInstallments = installments.filter((installment) => installment.status === "vencida");
   const paidInstallments = installments.filter((installment) => installment.status === "paga");
-  const pendingInstallmentsCount = installments.filter((installment) => installment.status === "pendente").length;
   const upcomingInstallments = installments.filter((installment) => installment.status !== "paga");
+  const pendingInstallmentsCount = installments.filter((installment) => installment.status === "pendente").length;
   const totalLoanValue = loans.reduce((acc, loan) => acc + loan.amountToPay, 0);
   const totalConsortiumValue = consortiums.reduce((acc, item) => acc + item.outstandingBalance, 0);
   const totalDebt = totalLoanValue + totalConsortiumValue;
   const upcomingInstallmentsValue = upcomingInstallments.reduce((acc, installment) => acc + installment.value, 0);
   const totalInstallmentsCount = installments.length || 1;
   const completionRate = Math.round((paidInstallments.length / totalInstallmentsCount) * 100);
-  const overdueRate = Math.round((overdueInstallments.length / totalInstallmentsCount) * 100);
+  const contractCount = loans.length + consortiums.length;
+  const averageTicketValue = contractCount ? totalDebt / contractCount : 0;
 
-  const statusBreakdown = [
-    {
-      label: "Pagas",
-      value: paidInstallments.length,
-      percentage: Math.round((paidInstallments.length / totalInstallmentsCount) * 100),
-      gradient: "from-emerald-400 to-emerald-600"
-    },
-    {
-      label: "Pendentes",
-      value: pendingInstallmentsCount,
-      percentage: Math.round((pendingInstallmentsCount / totalInstallmentsCount) * 100),
-      gradient: "from-logica-lilac to-logica-purple"
-    },
-    {
-      label: "Vencidas",
-      value: overdueInstallments.length,
-      percentage: overdueRate,
-      gradient: "from-orange-400 to-rose-500"
+  const upcomingWithin30Days = useMemo(() => {
+    const limitDate = new Date();
+    limitDate.setDate(limitDate.getDate() + 30);
+    return upcomingInstallments.filter((installment) => new Date(installment.date) <= limitDate);
+  }, [upcomingInstallments]);
+
+  const next30DaysValue = upcomingWithin30Days.reduce((acc, installment) => acc + installment.value, 0);
+  const next30DaysCount = upcomingWithin30Days.length;
+
+  const highestUpcomingInstallment = upcomingInstallments.reduce<Installment | null>((highest, current) => {
+    if (!highest || current.value > highest.value) {
+      return current;
     }
-  ];
+    return highest;
+  }, null);
 
   const monthlyCashflow = useMemo(() => {
     const startOfMonth = new Date();
     startOfMonth.setDate(1);
     startOfMonth.setHours(0, 0, 0, 0);
-    const formatter = new Intl.DateTimeFormat("pt-BR", { month: "short" });
 
     return Array.from({ length: 6 }, (_, index) => {
       const monthDate = new Date(startOfMonth);
@@ -76,7 +79,7 @@ export function Dashboard({
         return acc;
       }, 0);
 
-      const label = formatter.format(monthDate).replace(".", "");
+      const label = monthReferenceFormatter.format(monthDate).replace(".", "");
 
       return {
         key: `${monthDate.getFullYear()}-${monthDate.getMonth()}`,
@@ -88,10 +91,63 @@ export function Dashboard({
 
   const maxMonthlyCashflow = Math.max(1, ...monthlyCashflow.map((month) => month.value));
   const loanShare = totalDebt ? Math.round((totalLoanValue / totalDebt) * 100) : 0;
+  const consortiumShare = 100 - loanShare;
+  const yAxisSteps = 4;
+  const yAxisScale = Array.from({ length: yAxisSteps }, (_, index) => {
+    const value = Math.round((maxMonthlyCashflow / yAxisSteps) * (yAxisSteps - index));
+    return {
+      id: `y-axis-${index}`,
+      value,
+      label: formatCurrency(value)
+    };
+  });
+
+  const compositionBreakdown = [
+    {
+      label: "Empréstimos",
+      value: totalLoanValue,
+      share: loanShare,
+      accent: "text-logica-rose",
+      gradient: "from-logica-rose/80 to-logica-purple/80"
+    },
+    {
+      label: "Consórcios",
+      value: totalConsortiumValue,
+      share: consortiumShare,
+      accent: "text-logica-purple",
+      gradient: "from-logica-purple/80 to-logica-lilac/80"
+    }
+  ];
 
   const companyName = selectedCompany === "all"
     ? "Todas as empresas"
     : companies.find((company) => company.id === selectedCompany)?.name ?? "Empresa";
+
+  const nextInstallments = useMemo(() => {
+    return [...upcomingInstallments]
+      .sort((a, b) => new Date(a.date).getTime() - new Date(b.date).getTime())
+      .slice(0, 5);
+  }, [upcomingInstallments]);
+
+  const executiveHighlights = [
+    {
+      label: "Ticket médio por contrato",
+      value: formatCurrency(averageTicketValue),
+      description: `${contractCount} contratos monitorados`
+    },
+    {
+      label: "Comprometido nos próximos 30 dias",
+      value: formatCurrency(next30DaysValue),
+      description: `${next30DaysCount} parcelas previstas`
+    },
+    {
+      label: "Maior parcela prevista",
+      value: formatCurrency(highestUpcomingInstallment?.value ?? 0),
+      description: highestUpcomingInstallment
+        ? `Para ${scheduleDateFormatter.format(new Date(highestUpcomingInstallment.date)).replace(".", "")}`
+        : "Nenhum lançamento futuro"
+    }
+  ];
 
   return (
     <div className="space-y-6">
@@ -150,9 +206,9 @@ export function Dashboard({
           <p className="text-xs text-logica-lilac">Saldo restante somando todos os contratos</p>
         </div>
         <div className={`${cardBaseClass} border-logica-rose/20 shadow-logica-rose/20`}>
-          <p className="text-xs font-semibold uppercase tracking-wide text-logica-lilac">Parcelas vencidas</p>
-          <p className="mt-2 text-3xl font-bold text-logica-rose">{overdueInstallments.length}</p>
-          <p className="text-xs text-logica-lilac">{overdueRate}% da carteira</p>
+          <p className="text-xs font-semibold uppercase tracking-wide text-logica-lilac">Parcelas pendentes</p>
+          <p className="mt-2 text-3xl font-bold text-logica-rose">{pendingInstallmentsCount}</p>
+          <p className="text-xs text-logica-lilac">{formatCurrency(upcomingInstallmentsValue)} aguardando liquidação</p>
         </div>
         <div className={`${cardBaseClass} border-logica-purple/20 shadow-logica-purple/20`}>
           <p className="text-xs font-semibold uppercase tracking-wide text-logica-lilac">Próximos pagamentos</p>
@@ -183,25 +239,46 @@ export function Dashboard({
               {formatCurrency(upcomingInstallmentsValue)} em aberto
             </p>
           </div>
-          <div className="flex items-end gap-3">
-            {monthlyCashflow.map((month) => (
-              <div key={month.key} className="flex-1">
-                <div className="flex flex-col items-center gap-2">
-                  <div className="flex h-44 w-full items-end rounded-2xl bg-logica-light-lilac/60 p-1">
-                    <div
-                      className="w-full rounded-xl bg-gradient-to-t from-logica-purple to-logica-rose"
-                      style={{ height: `${Math.round((month.value / maxMonthlyCashflow) * 100)}%` }}
-                    >
-                      <span className="sr-only">
-                        {month.label}: {formatCurrency(month.value)}
-                      </span>
+          <div className="relative mt-2">
+            <div className="absolute inset-0 grid grid-rows-4 text-[10px] text-logica-lilac">
+              {yAxisScale.map((scale, index) => (
+                <div key={scale.id} className="relative flex h-full items-start">
+                  <span className="-translate-y-1/2 pr-3 font-semibold">{scale.label}</span>
+                  <div
+                    className={`mt-2 h-px flex-1 ${index === yAxisScale.length - 1 ? "bg-transparent" : "bg-logica-light-lilac/70"}`}
+                  />
+                </div>
+              ))}
+            </div>
+            <div className="relative ml-16 flex h-48 items-end gap-3" role="list">
+              {monthlyCashflow.map((month) => {
+                const height = Math.round((month.value / maxMonthlyCashflow) * 100);
+                const isMax = month.value === maxMonthlyCashflow;
+                return (
+                  <div key={month.key} className="flex-1" role="listitem" aria-label={`${month.label} ${formatCurrency(month.value)}`}>
+                    <div className="group flex h-full flex-col items-center gap-3">
+                      <div className="flex h-full w-full items-end rounded-2xl bg-gradient-to-b from-white/60 via-logica-light-lilac/40 to-logica-light-lilac/70 p-1">
+                        <div
+                          className={`relative w-full rounded-xl bg-gradient-to-t from-logica-purple to-logica-rose shadow-inner transition-all group-hover:brightness-110 ${isMax ? "ring-2 ring-white/70" : ""}`}
+                          style={{ height: `${height}%` }}
+                        >
+                          <span className="absolute inset-x-1 top-1 rounded-full bg-white/90 px-1 text-[10px] font-semibold text-logica-purple">
+                            {formatCurrency(month.value)}
+                          </span>
+                        </div>
+                      </div>
                     </div>
                   </div>
-                  <p className="text-xs font-semibold uppercase tracking-wide text-logica-lilac">{month.label}</p>
-                  <p className="text-xs text-logica-purple">{formatCurrency(month.value)}</p>
-                </div>
-              </div>
-            ))}
+                );
+              })}
+            </div>
+            <div className="mt-4 ml-16 flex items-center justify-between text-[10px] font-semibold uppercase tracking-wide text-logica-lilac">
+              {monthlyCashflow.map((month) => (
+                <span key={`${month.key}-label`} className="flex-1 text-center">
+                  {month.label}
+                </span>
+              ))}
+            </div>
           </div>
         </div>
         <div className={`${cardBaseClass} flex flex-col gap-6 border-logica-rose/20 shadow-logica-rose/10`}>
@@ -209,86 +286,126 @@ export function Dashboard({
             <h2 className="text-lg font-semibold text-logica-purple">Composição da carteira</h2>
             <p className="text-xs text-logica-lilac">Distribuição entre empréstimos e consórcios</p>
           </div>
-          <div className="flex flex-col items-center gap-4">
+          <div className="flex flex-col items-center gap-5">
             <div className="relative h-48 w-48">
               <div
                 className="absolute inset-0 rounded-full border border-white/60"
                 style={{
                   background: `conic-gradient(#b42a98 ${loanShare}%, #61105c ${loanShare}% 100%)`
                 }}
-              />
-              <div className="absolute inset-6 flex flex-col items-center justify-center rounded-full bg-white/80 text-center">
+              >
+                <span className="sr-only">{loanShare}% em empréstimos</span>
+              </div>
+              <div className="absolute inset-4 rounded-full bg-white/70" />
+              <div className="absolute inset-8 flex flex-col items-center justify-center rounded-full bg-white/90 text-center">
                 <p className="text-3xl font-bold text-logica-purple">{loanShare}%</p>
                 <p className="text-xs text-logica-lilac">em empréstimos</p>
+                <p className="text-xs text-logica-lilac">{consortiumShare}% em consórcios</p>
               </div>
             </div>
-            <div className="grid w-full grid-cols-2 gap-3 text-sm">
-              <div className="rounded-2xl bg-logica-light-lilac/80 p-3">
-                <p className="text-xs font-semibold uppercase tracking-wide text-logica-lilac">Empréstimos</p>
-                <p className="mt-1 text-lg font-semibold text-logica-rose">{formatCurrency(totalLoanValue)}</p>
-              </div>
-              <div className="rounded-2xl bg-logica-light-lilac/80 p-3">
-                <p className="text-xs font-semibold uppercase tracking-wide text-logica-lilac">Consórcios</p>
-                <p className="mt-1 text-lg font-semibold text-logica-purple">{formatCurrency(totalConsortiumValue)}</p>
-              </div>
+            <div className="w-full space-y-3 text-sm">
+              {compositionBreakdown.map((item) => (
+                <div key={item.label} className="flex items-center gap-3 rounded-2xl bg-white/70 p-3 shadow-inner">
+                  <div className={`h-10 w-10 rounded-xl bg-gradient-to-br ${item.gradient}`}>
+                    <span className="sr-only">{item.label}</span>
+                  </div>
+                  <div className="flex-1">
+                    <p className="text-xs font-semibold uppercase tracking-wide text-logica-lilac">{item.label}</p>
+                    <p className={`text-base font-semibold ${item.accent}`}>{formatCurrency(item.value)}</p>
+                  </div>
+                  <div className="text-right">
+                    <p className="text-xs font-semibold text-logica-lilac">Participação</p>
+                    <p className="text-base font-bold text-logica-purple">{item.share}%</p>
+                  </div>
+                </div>
+              ))}
             </div>
           </div>
         </div>
       </section>
 
-      <section className="grid gap-4 lg:grid-cols-2">
-        <div className={`${cardBaseClass} border-logica-purple/20 shadow-logica-purple/10`}>
-          <div className="mb-5 flex items-center justify-between">
-            <h2 className="text-lg font-semibold text-logica-purple">Saúde das parcelas</h2>
-            <p className="text-xs text-logica-lilac">{installments.length} registros</p>
+      <section className="grid gap-4 lg:grid-cols-3">
+        <div className={`${cardBaseClass} lg:col-span-2 border-logica-purple/20 shadow-logica-purple/10`}>
+          <div className="mb-5 flex flex-wrap items-center justify-between gap-2">
+            <div>
+              <h2 className="text-lg font-semibold text-logica-purple">Cronograma de pagamentos</h2>
+              <p className="text-xs text-logica-lilac">Próximas parcelas monitoradas</p>
+            </div>
+            <span className="rounded-full bg-logica-light-lilac/60 px-3 py-1 text-xs font-semibold text-logica-purple">
+              {upcomingInstallments.length} lançamentos futuros
+            </span>
           </div>
-          <div className="space-y-5">
-            {statusBreakdown.map((status) => (
-              <div key={status.label}>
-                <div className="flex items-center justify-between text-sm font-semibold text-logica-purple">
-                  <span>{status.label}</span>
-                  <span>
-                    {status.value} • {status.percentage}%
-                  </span>
-                </div>
-                <div className="mt-2 h-2 w-full rounded-full bg-logica-light-lilac/60">
-                  <div
-                    className={`h-2 rounded-full bg-gradient-to-r ${status.gradient}`}
-                    style={{ width: `${status.percentage}%` }}
-                  />
-                </div>
-              </div>
-            ))}
+          <div className="overflow-hidden rounded-2xl border border-logica-light-lilac/80">
+            <table className="w-full text-sm">
+              <thead>
+                <tr className="bg-logica-light-lilac/50 text-left text-xs font-semibold uppercase tracking-wide text-logica-lilac">
+                  <th className="px-4 py-3">Data</th>
+                  <th className="px-4 py-3">Contrato</th>
+                  <th className="px-4 py-3">Origem</th>
+                  <th className="px-4 py-3 text-right">Valor</th>
+                  <th className="px-4 py-3 text-right">Status</th>
+                </tr>
+              </thead>
+              <tbody>
+                {nextInstallments.length === 0 && (
+                  <tr>
+                    <td colSpan={5} className="px-4 py-6 text-center text-sm text-logica-lilac">
+                      Nenhuma parcela futura cadastrada para este período.
+                    </td>
+                  </tr>
+                )}
+                {nextInstallments.map((installment) => {
+                  const relatedLoan = loans.find((loan) => loan.id === installment.contractId);
+                  const relatedConsortium = consortiums.find((item) => item.id === installment.contractId);
+                  const contractLabel =
+                    installment.contractType === "loan"
+                      ? relatedLoan?.reference ?? "Empréstimo"
+                      : relatedConsortium
+                        ? `Consórcio ${relatedConsortium.administrator}`
+                        : "Consórcio";
+                  const contractOrigin = installment.contractType === "loan" ? "Empréstimo" : "Consórcio";
+                  const statusLabel = installment.status === "pendente" ? "Pendente" : "Agendado";
+
+                  return (
+                    <tr key={installment.id} className="border-t border-logica-light-lilac/60">
+                      <td className="px-4 py-3 font-semibold text-logica-purple">
+                        {scheduleDateFormatter.format(new Date(installment.date)).replace(".", "")}
+                      </td>
+                      <td className="px-4 py-3 text-logica-purple">{contractLabel}</td>
+                      <td className="px-4 py-3 text-logica-lilac">{contractOrigin}</td>
+                      <td className="px-4 py-3 text-right font-semibold text-logica-purple">
+                        {formatCurrency(installment.value)}
+                      </td>
+                      <td className="px-4 py-3 text-right">
+                        <span className="rounded-full bg-white/70 px-3 py-1 text-xs font-semibold text-logica-purple">
+                          {statusLabel}
+                        </span>
+                      </td>
+                    </tr>
+                  );
+                })}
+              </tbody>
+            </table>
           </div>
         </div>
-        <div className={`${cardBaseClass} border-logica-rose/20 shadow-logica-rose/10`}>
-          <div className="mb-5 flex items-center justify-between">
-            <h2 className="text-lg font-semibold text-logica-purple">Alertas rápidos</h2>
-            <p className="text-xs text-logica-lilac">Atualizado em tempo real</p>
+        <div className={`${cardBaseClass} flex flex-col gap-5 border-logica-rose/20 shadow-logica-rose/10`}>
+          <div>
+            <h2 className="text-lg font-semibold text-logica-purple">Resumo executivo</h2>
+            <p className="text-xs text-logica-lilac">Indicadores-chave da carteira</p>
           </div>
-          <ul className="space-y-4 text-sm text-logica-purple">
-            <li className="flex items-center justify-between rounded-2xl bg-logica-light-lilac/70 px-4 py-3">
-              <div>
-                <p className="font-semibold">Próximas parcelas</p>
-                <p className="text-xs text-logica-lilac">{upcomingInstallments.length} lançamentos aguardando pagamento</p>
-              </div>
-              <span className="text-base font-bold">{formatCurrency(upcomingInstallmentsValue)}</span>
-            </li>
-            <li className="flex items-center justify-between rounded-2xl bg-logica-light-lilac/70 px-4 py-3">
-              <div>
-                <p className="font-semibold">Parcelas vencidas</p>
-                <p className="text-xs text-logica-lilac">{overdueInstallments.length} registros</p>
-              </div>
-              <span className="text-base font-bold text-logica-rose">{overdueRate}%</span>
-            </li>
-            <li className="flex items-center justify-between rounded-2xl bg-logica-light-lilac/70 px-4 py-3">
-              <div>
-                <p className="font-semibold">Dívida consolidada</p>
-                <p className="text-xs text-logica-lilac">Empréstimos + consórcios</p>
-              </div>
-              <span className="text-base font-bold">{formatCurrency(totalDebt)}</span>
-            </li>
+          <ul className="space-y-4">
+            {executiveHighlights.map((item) => (
+              <li key={item.label} className="rounded-2xl bg-logica-light-lilac/60 p-4">
+                <p className="text-xs font-semibold uppercase tracking-wide text-logica-lilac">{item.label}</p>
+                <p className="mt-1 text-2xl font-bold text-logica-purple">{item.value}</p>
+                <p className="text-xs text-logica-lilac">{item.description}</p>
+              </li>
+            ))}
           </ul>
+          <div className="rounded-2xl border border-dashed border-logica-light-lilac/80 bg-gradient-to-br from-white/70 to-logica-light-lilac/50 p-4 text-sm text-logica-purple">
+            <p className="font-semibold">Última atualização</p>
+            <p className="text-xs text-logica-lilac">{new Date().toLocaleDateString("pt-BR", { dateStyle: "long" })}</p>
+          </div>
         </div>
       </section>
     </div>
