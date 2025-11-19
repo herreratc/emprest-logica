@@ -12,7 +12,7 @@ const monthReferenceFormatter = new Intl.DateTimeFormat("pt-BR", {
 });
 
 const cardBaseClass =
-  "rounded-2xl border border-white/50 bg-white/80 p-5 shadow-lg shadow-black/5 backdrop-blur transition";
+  "rounded-2xl border border-logica-light-lilac/70 bg-white/90 p-5 shadow-lg shadow-logica-light-lilac/50 backdrop-blur transition hover:-translate-y-0.5 hover:shadow-xl";
 
 type DashboardProps = {
   companies: Company[];
@@ -149,16 +149,101 @@ export function Dashboard({
     }
   ];
 
+  const toneStyles: Record<"purple" | "rose", string> = {
+    purple: "border-logica-purple/20 shadow-logica-purple/15",
+    rose: "border-logica-rose/20 shadow-logica-rose/15"
+  };
+
+  type SummaryCard = {
+    label: string;
+    value: string | number;
+    description: string;
+    icon: string;
+    tone: keyof typeof toneStyles;
+    progress?: number;
+  };
+
+  const summaryCards: SummaryCard[] = [
+    {
+      label: "Empresa",
+      value: companyName,
+      description: `${loans.length + consortiums.length} contratos vinculados`,
+      icon: "🏢",
+      tone: "purple"
+    },
+    {
+      label: "Total de empréstimos",
+      value: loans.length,
+      description: "Contratos ativos e finalizados",
+      icon: "📄",
+      tone: "rose"
+    },
+    {
+      label: "Total de consórcios",
+      value: consortiums.length,
+      description: "Operações em acompanhamento",
+      icon: "💠",
+      tone: "purple"
+    },
+    {
+      label: "Empréstimos em R$",
+      value: formatCurrency(totalLoanValue),
+      description: "Saldo atual a pagar",
+      icon: "💸",
+      tone: "rose"
+    },
+    {
+      label: "Consórcios em R$",
+      value: formatCurrency(totalConsortiumValue),
+      description: "Saldo devedor das cotas",
+      icon: "📊",
+      tone: "purple"
+    },
+    {
+      label: "Dívida total",
+      value: formatCurrency(totalDebt),
+      description: "Empréstimos + consórcios",
+      icon: "🧾",
+      tone: "purple"
+    },
+    {
+      label: "Parcelas pendentes",
+      value: pendingInstallmentsCount,
+      description: `${formatCurrency(upcomingInstallmentsValue)} aguardando liquidação`,
+      icon: "⏳",
+      tone: "rose"
+    },
+    {
+      label: "Próximos pagamentos",
+      value: formatCurrency(upcomingInstallmentsValue),
+      description: "Parcelas ainda não pagas",
+      icon: "📆",
+      tone: "purple"
+    },
+    {
+      label: "Taxa de adimplência",
+      value: `${completionRate}%`,
+      description: `Baseada em ${installments.length} parcelas`,
+      icon: "✅",
+      tone: "purple",
+      progress: completionRate
+    }
+  ];
+
   return (
     <div className="space-y-6">
       <header className="flex flex-wrap items-center justify-between gap-4">
         <div>
+          <p className="text-xs font-semibold uppercase tracking-wide text-logica-lilac">Visão consolidada</p>
           <h1 className="text-3xl font-semibold text-logica-purple">Dashboard</h1>
           <p className="text-sm text-logica-lilac">
             Indicadores consolidados dos empréstimos e consórcios cadastrados na plataforma.
           </p>
         </div>
         <div className="flex flex-wrap items-center gap-3">
+          <div className="rounded-xl bg-white/90 px-4 py-2 text-sm font-semibold text-logica-purple shadow">
+            {companyName}
+          </div>
           <select
             value={selectedCompany}
             onChange={(event) => onSelectCompany(event.target.value as typeof selectedCompany)}
@@ -175,57 +260,24 @@ export function Dashboard({
       </header>
 
       <section className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4 2xl:grid-cols-5">
-        <div className={`${cardBaseClass} border-logica-purple/20 shadow-logica-purple/20`}>
-          <p className="text-xs font-semibold uppercase tracking-wide text-logica-lilac">Empresa</p>
-          <p className="mt-2 text-lg font-semibold text-logica-purple">{companyName}</p>
-          <p className="text-xs text-logica-lilac">{loans.length + consortiums.length} contratos vinculados</p>
-        </div>
-        <div className={`${cardBaseClass} border-logica-rose/20 shadow-logica-rose/20`}>
-          <p className="text-xs font-semibold uppercase tracking-wide text-logica-lilac">Total de empréstimos</p>
-          <p className="mt-2 text-3xl font-bold text-logica-rose">{loans.length}</p>
-          <p className="text-xs text-logica-lilac">Quantidade de contratos ativos e finalizados</p>
-        </div>
-        <div className={`${cardBaseClass} border-logica-purple/20 shadow-logica-purple/20`}>
-          <p className="text-xs font-semibold uppercase tracking-wide text-logica-lilac">Total de consórcios</p>
-          <p className="mt-2 text-3xl font-bold text-logica-purple">{consortiums.length}</p>
-          <p className="text-xs text-logica-lilac">Operações em acompanhamento</p>
-        </div>
-        <div className={`${cardBaseClass} border-logica-rose/20 shadow-logica-rose/20`}>
-          <p className="text-xs font-semibold uppercase tracking-wide text-logica-lilac">Empréstimos em R$</p>
-          <p className="mt-2 text-3xl font-bold text-logica-rose">{formatCurrency(totalLoanValue)}</p>
-          <p className="text-xs text-logica-lilac">Saldo atual a pagar em empréstimos</p>
-        </div>
-        <div className={`${cardBaseClass} border-logica-purple/20 shadow-logica-purple/20`}>
-          <p className="text-xs font-semibold uppercase tracking-wide text-logica-lilac">Consórcios em R$</p>
-          <p className="mt-2 text-3xl font-bold text-logica-purple">{formatCurrency(totalConsortiumValue)}</p>
-          <p className="text-xs text-logica-lilac">Saldo devedor das cotas em aberto</p>
-        </div>
-        <div className={`${cardBaseClass} border-logica-purple/20 shadow-logica-purple/20`}>
-          <p className="text-xs font-semibold uppercase tracking-wide text-logica-lilac">Dívida total</p>
-          <p className="mt-2 text-3xl font-bold text-logica-purple">{formatCurrency(totalDebt)}</p>
-          <p className="text-xs text-logica-lilac">Saldo restante somando todos os contratos</p>
-        </div>
-        <div className={`${cardBaseClass} border-logica-rose/20 shadow-logica-rose/20`}>
-          <p className="text-xs font-semibold uppercase tracking-wide text-logica-lilac">Parcelas pendentes</p>
-          <p className="mt-2 text-3xl font-bold text-logica-rose">{pendingInstallmentsCount}</p>
-          <p className="text-xs text-logica-lilac">{formatCurrency(upcomingInstallmentsValue)} aguardando liquidação</p>
-        </div>
-        <div className={`${cardBaseClass} border-logica-purple/20 shadow-logica-purple/20`}>
-          <p className="text-xs font-semibold uppercase tracking-wide text-logica-lilac">Próximos pagamentos</p>
-          <p className="mt-2 text-3xl font-bold text-logica-purple">{formatCurrency(upcomingInstallmentsValue)}</p>
-          <p className="text-xs text-logica-lilac">Parcelas ainda não pagas</p>
-        </div>
-        <div className={`${cardBaseClass} border-logica-purple/20 shadow-logica-purple/20`}>
-          <p className="text-xs font-semibold uppercase tracking-wide text-logica-lilac">Taxa de adimplência</p>
-          <p className="mt-2 text-3xl font-bold text-logica-purple">{completionRate}%</p>
-          <div className="mt-3 h-2 w-full rounded-full bg-logica-light-lilac/70">
-            <div
-              className="h-2 rounded-full bg-gradient-to-r from-emerald-400 to-emerald-600"
-              style={{ width: `${completionRate}%` }}
-            />
+        {summaryCards.map((card) => (
+          <div key={card.label} className={`${cardBaseClass} ${toneStyles[card.tone]}`}>
+            <div className="flex items-center justify-between">
+              <p className="text-xs font-semibold uppercase tracking-wide text-logica-lilac">{card.label}</p>
+              <span className="text-lg">{card.icon}</span>
+            </div>
+            <p className="mt-2 text-3xl font-bold text-logica-purple">{card.value}</p>
+            <p className="text-xs text-logica-lilac">{card.description}</p>
+            {card.progress !== undefined && (
+              <div className="mt-3 h-2 w-full rounded-full bg-logica-light-lilac/70">
+                <div
+                  className="h-2 rounded-full bg-gradient-to-r from-emerald-400 to-emerald-600"
+                  style={{ width: `${card.progress}%` }}
+                />
+              </div>
+            )}
           </div>
-          <p className="mt-2 text-xs text-logica-lilac">Baseada em {installments.length} parcelas</p>
-        </div>
+        ))}
       </section>
 
       <section className="grid gap-4 xl:grid-cols-3">
