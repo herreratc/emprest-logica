@@ -21,7 +21,9 @@ export function Sidebar({ activeView, onChangeView }: SidebarProps) {
   return (
     <aside className="flex w-64 flex-col border-r border-logica-lilac bg-white/80 p-6 backdrop-blur">
       <div className="flex items-center gap-3">
-        <img src="/logo.svg" alt="Lógica" className="h-12 w-12" />
+        <div className="rounded-2xl bg-logica-light-lilac p-2 shadow-inner">
+          <img src="/logo.svg" alt="Lógica" className="h-12 w-12" />
+        </div>
         <div>
           <p className="text-sm font-semibold text-logica-purple">Controle de Empréstimos</p>
           <p className="text-xs text-logica-lilac">Lógica App</p>

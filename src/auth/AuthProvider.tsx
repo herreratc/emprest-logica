@@ -15,7 +15,6 @@ type AuthContextValue = {
   loading: boolean;
   signInWithEmail: (email: string, password: string) => Promise<void>;
   signUpWithEmail: (email: string, password: string) => Promise<void>;
-  signInWithGoogle: () => Promise<void>;
   signOut: () => Promise<void>;
   isConfigured: boolean;
 };
@@ -65,11 +64,6 @@ export function AuthProvider({ children }: PropsWithChildren) {
     async signUpWithEmail(email: string, password: string) {
       if (!supabase) throw notConfiguredError;
       const { error } = await supabase.auth.signUp({ email, password });
-      if (error) throw error;
-    },
-    async signInWithGoogle() {
-      if (!supabase) throw notConfiguredError;
-      const { error } = await supabase.auth.signInWithOAuth({ provider: "google" });
       if (error) throw error;
     },
     async signOut() {

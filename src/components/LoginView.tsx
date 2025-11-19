@@ -2,7 +2,7 @@ import { FormEvent, useState } from "react";
 import { useAuth } from "../auth/AuthProvider";
 
 export function LoginView() {
-  const { signInWithEmail, signUpWithEmail, signInWithGoogle, isConfigured } = useAuth();
+  const { signInWithEmail, signUpWithEmail, isConfigured } = useAuth();
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [mode, setMode] = useState<"login" | "signup">("login");
@@ -30,81 +30,114 @@ export function LoginView() {
     }
   };
 
-  const handleGoogle = async () => {
-    setError(null);
-    if (!isConfigured) {
-      setError("Configure o Supabase para autenticar com Google.");
-      return;
-    }
-    try {
-      await signInWithGoogle();
-    } catch (err) {
-      setError(err instanceof Error ? err.message : "Erro inesperado");
-    }
-  };
-
   return (
     <div className="flex min-h-screen bg-gradient-to-br from-logica-deep-purple via-logica-purple to-logica-rose">
-      <div className="mx-auto flex w-full max-w-md flex-col justify-center px-6 py-12 text-white">
-        <div className="rounded-2xl bg-white/10 p-8 shadow-2xl backdrop-blur">
-          <div className="mb-6 text-center">
-            <img src="/logo.svg" alt="Lógica" className="mx-auto h-14 w-14" />
-            <h1 className="mt-4 text-2xl font-semibold">Controle de Empréstimos</h1>
-            <p className="text-sm text-logica-light-lilac">
-              Acesse com sua conta master ou crie uma nova conta via Supabase.
+      <div className="mx-auto flex w-full max-w-5xl flex-col justify-center px-6 py-12 text-white">
+        <div className="grid items-center gap-8 rounded-3xl border border-white/15 bg-white/5 p-8 shadow-2xl backdrop-blur md:grid-cols-[1.1fr_0.9fr]">
+          <div className="space-y-4">
+            <div className="flex items-center gap-3">
+              <div className="rounded-2xl bg-white/90 p-3 shadow-lg shadow-black/10">
+                <img src="/logo.svg" alt="Lógica" className="h-12 w-12" />
+              </div>
+              <div>
+                <p className="text-sm uppercase tracking-[0.2em] text-white/80">Logística financeira</p>
+                <h1 className="text-3xl font-semibold leading-tight">Portal de empréstimos e consórcios</h1>
+              </div>
+            </div>
+            <p className="text-sm text-white/80">
+              Centralize cadastros, acompanhe parcelas e mantenha os dados sincronizados via Supabase. Crie sua conta
+              administrativa ou acesse com as credenciais já configuradas.
             </p>
+            <div className="grid gap-3 sm:grid-cols-2">
+              {["Acesso seguro por e-mail", "Painéis com indicadores", "Fluxo de parcelas em destaque", "Cadastro de empresas, contratos e usuários"].map((item) => (
+                <div
+                  key={item}
+                  className="rounded-xl border border-white/15 bg-white/10 px-3 py-2 text-sm font-medium text-white/90 shadow-inner shadow-black/10"
+                >
+                  {item}
+                </div>
+              ))}
+            </div>
             {!isConfigured && (
-              <p className="mt-2 text-xs text-yellow-200">
-                Defina as variáveis VITE_SUPABASE_URL e VITE_SUPABASE_ANON_KEY para habilitar o login.
-              </p>
+              <div className="flex items-start gap-3 rounded-xl border border-yellow-200/50 bg-yellow-100/10 p-3 text-sm text-yellow-50">
+                <span className="mt-0.5 text-lg">⚠️</span>
+                <div>
+                  <p className="font-semibold">Variáveis de ambiente pendentes</p>
+                  <p className="text-white/80">
+                    Defina VITE_SUPABASE_URL e VITE_SUPABASE_ANON_KEY para habilitar login e criação de contas direto no
+                    Supabase.
+                  </p>
+                </div>
+              </div>
             )}
           </div>
-          <form onSubmit={handleSubmit} className="space-y-4">
-            <div>
-              <label className="text-xs uppercase tracking-wide text-logica-light-lilac">E-mail</label>
-              <input
-                type="email"
-                value={email}
-                onChange={(event) => setEmail(event.target.value)}
-                required
-                disabled={!isConfigured}
-                className="mt-1 w-full rounded-lg border border-logica-lilac/40 bg-white/90 px-3 py-2 text-logica-deep-purple focus:border-logica-rose focus:outline-none disabled:cursor-not-allowed disabled:opacity-70"
-              />
+
+          <div className="rounded-2xl bg-white p-6 text-logica-deep-purple shadow-xl">
+            <div className="mb-4 flex items-center justify-between">
+              <h2 className="text-xl font-semibold text-logica-purple">
+                {mode === "login" ? "Entrar" : "Criar conta"}
+              </h2>
+              <div className="rounded-full bg-logica-light-lilac px-3 py-1 text-xs font-semibold text-logica-purple">
+                Acesso via Supabase
+              </div>
             </div>
-            <div>
-              <label className="text-xs uppercase tracking-wide text-logica-light-lilac">Senha</label>
-              <input
-                type="password"
-                value={password}
-                onChange={(event) => setPassword(event.target.value)}
-                required
-                disabled={!isConfigured}
-                className="mt-1 w-full rounded-lg border border-logica-lilac/40 bg-white/90 px-3 py-2 text-logica-deep-purple focus:border-logica-rose focus:outline-none disabled:cursor-not-allowed disabled:opacity-70"
-              />
+            <div className="mb-4 grid grid-cols-2 rounded-lg border border-logica-light-lilac bg-logica-light-lilac/60 text-sm font-semibold">
+              <button
+                type="button"
+                onClick={() => setMode("login")}
+                className={`rounded-md px-3 py-2 transition ${
+                  mode === "login" ? "bg-white text-logica-purple shadow" : "text-logica-deep-purple/70"
+                }`}
+              >
+                Já tenho acesso
+              </button>
+              <button
+                type="button"
+                onClick={() => setMode("signup")}
+                className={`rounded-md px-3 py-2 transition ${
+                  mode === "signup" ? "bg-white text-logica-purple shadow" : "text-logica-deep-purple/70"
+                }`}
+              >
+                Criar conta
+              </button>
             </div>
-            {error && <p className="text-sm text-rose-200">{error}</p>}
-            <button
-              type="submit"
-              disabled={loading || !isConfigured}
-              className="w-full rounded-lg bg-logica-rose px-4 py-2 text-sm font-semibold text-white shadow-lg shadow-logica-rose/40 transition hover:bg-logica-purple disabled:cursor-not-allowed disabled:opacity-70"
-            >
-              {loading ? "Aguarde..." : mode === "login" ? "Entrar" : "Criar conta"}
-            </button>
-          </form>
-          <div className="mt-6 space-y-3 text-center text-sm">
-            <button
-              onClick={handleGoogle}
-              disabled={!isConfigured}
-              className="w-full rounded-lg border border-white/30 px-4 py-2 font-medium transition hover:border-white/60 disabled:cursor-not-allowed disabled:opacity-70"
-            >
-              Entrar com Google
-            </button>
-            <button
-              onClick={() => setMode(mode === "login" ? "signup" : "login")}
-              className="text-logica-light-lilac underline hover:text-white"
-            >
-              {mode === "login" ? "Criar nova conta" : "Já tenho conta"}
-            </button>
+
+            <form onSubmit={handleSubmit} className="space-y-4">
+              <div className="space-y-1">
+                <label className="text-xs font-semibold uppercase tracking-wide text-logica-purple">E-mail</label>
+                <input
+                  type="email"
+                  value={email}
+                  onChange={(event) => setEmail(event.target.value)}
+                  required
+                  disabled={!isConfigured}
+                  className="w-full rounded-lg border border-logica-light-lilac px-3 py-2 text-logica-deep-purple shadow-sm focus:border-logica-rose focus:outline-none disabled:cursor-not-allowed disabled:opacity-70"
+                />
+              </div>
+              <div className="space-y-1">
+                <label className="text-xs font-semibold uppercase tracking-wide text-logica-purple">Senha</label>
+                <input
+                  type="password"
+                  value={password}
+                  onChange={(event) => setPassword(event.target.value)}
+                  required
+                  disabled={!isConfigured}
+                  className="w-full rounded-lg border border-logica-light-lilac px-3 py-2 text-logica-deep-purple shadow-sm focus:border-logica-rose focus:outline-none disabled:cursor-not-allowed disabled:opacity-70"
+                />
+              </div>
+              {error && <p className="text-sm text-rose-600">{error}</p>}
+              <button
+                type="submit"
+                disabled={loading || !isConfigured}
+                className="flex w-full items-center justify-center gap-2 rounded-lg bg-gradient-to-r from-logica-purple to-logica-rose px-4 py-2 text-sm font-semibold text-white shadow-lg shadow-logica-rose/30 transition hover:brightness-105 disabled:cursor-not-allowed disabled:opacity-70"
+              >
+                {loading ? "Autenticando..." : mode === "login" ? "Entrar" : "Cadastrar"}
+              </button>
+              <p className="text-xs text-logica-deep-purple/70">
+                Apenas autenticação por e-mail e senha está habilitada. As credenciais são armazenadas diretamente no
+                Supabase.
+              </p>
+            </form>
           </div>
         </div>
       </div>
