@@ -38,6 +38,14 @@ export function Dashboard({
   const totalConsortiumValue = consortiums.reduce((acc, item) => acc + item.outstandingBalance, 0);
   const totalDebt = totalLoanValue + totalConsortiumValue;
   const upcomingInstallmentsValue = upcomingInstallments.reduce((acc, installment) => acc + installment.value, 0);
+  const today = new Date();
+  const overdueInstallments = upcomingInstallments.filter(
+    (installment) => new Date(installment.date) < today && installment.status === "pendente"
+  );
+  const overdueValue = overdueInstallments.reduce((acc, installment) => acc + installment.value, 0);
+  const averageProjection = upcomingInstallments.length
+    ? upcomingInstallmentsValue / Math.min(3, upcomingInstallments.length)
+    : 0;
   const totalInstallmentsCount = installments.length || 1;
   const completionRate = Math.round((paidInstallments.length / totalInstallmentsCount) * 100);
   const contractCount = loans.length + consortiums.length;
@@ -51,6 +59,11 @@ export function Dashboard({
 
   const next30DaysValue = upcomingWithin30Days.reduce((acc, installment) => acc + installment.value, 0);
   const next30DaysCount = upcomingWithin30Days.length;
+  const next7DaysCount = upcomingWithin30Days.filter((installment) => {
+    const limit = new Date();
+    limit.setDate(limit.getDate() + 7);
+    return new Date(installment.date) <= limit;
+  }).length;
 
   const highestUpcomingInstallment = upcomingInstallments.reduce<Installment | null>((highest, current) => {
     if (!highest || current.value > highest.value) {
@@ -146,6 +159,11 @@ export function Dashboard({
       description: highestUpcomingInstallment
         ? `Para ${scheduleDateFormatter.format(new Date(highestUpcomingInstallment.date)).replace(".", "")}`
         : "Nenhum lançamento futuro"
+    },
+    {
+      label: "Comprometimento médio",
+      value: formatCurrency(averageProjection),
+      description: "Estimativa média por lançamento futuro"
     }
   ];
 
@@ -232,32 +250,100 @@ export function Dashboard({
 
   return (
     <div className="space-y-6">
-      <header className="flex flex-wrap items-center justify-between gap-4">
-        <div>
-          <p className="text-xs font-semibold uppercase tracking-wide text-logica-lilac">Visão consolidada</p>
-          <h1 className="text-3xl font-semibold text-logica-purple">Dashboard</h1>
-          <p className="text-sm text-logica-lilac">
-            Indicadores consolidados dos empréstimos e consórcios cadastrados na plataforma.
-          </p>
-        </div>
-        <div className="flex flex-wrap items-center gap-3">
-          <div className="rounded-xl bg-white/90 px-4 py-2 text-sm font-semibold text-logica-purple shadow">
-            {companyName}
+      <header className="overflow-hidden rounded-3xl border border-logica-light-lilac/80 bg-gradient-to-r from-white/95 via-logica-light-lilac/60 to-white/95 p-6 shadow-xl">
+        <div className="flex flex-wrap items-start justify-between gap-4">
+          <div className="space-y-1">
+            <div className="flex items-center gap-2 text-xs font-semibold uppercase tracking-wide text-logica-lilac">
+              <span className="h-2 w-2 rounded-full bg-gradient-to-r from-logica-rose to-logica-purple" />
+              Visão consolidada
+            </div>
+            <h1 className="text-3xl font-semibold text-logica-purple">Dashboard</h1>
+            <p className="text-sm text-logica-lilac">
+              Indicadores consolidados dos empréstimos e consórcios cadastrados na plataforma.
+            </p>
+            <div className="flex flex-wrap gap-2 text-xs text-logica-purple">
+              <span className="rounded-full bg-white/90 px-3 py-1 font-semibold shadow-inner">
+                {companyName}
+              </span>
+              <span className="flex items-center gap-1 rounded-full bg-white/80 px-3 py-1 font-semibold shadow-inner">
+                🔔 {next7DaysCount} vencimentos em 7 dias
+              </span>
+              <span className="flex items-center gap-1 rounded-full bg-white/80 px-3 py-1 font-semibold shadow-inner">
+                ⚠️ {overdueInstallments.length} em atraso
+              </span>
+            </div>
           </div>
-          <select
-            value={selectedCompany}
-            onChange={(event) => onSelectCompany(event.target.value as typeof selectedCompany)}
-            className="rounded-full border border-logica-lilac bg-white px-4 py-2 text-sm font-medium text-logica-purple shadow"
-          >
-            <option value="all">Todas as empresas</option>
-            {companies.map((company) => (
-              <option key={company.id} value={company.id}>
-                {company.name}
-              </option>
-            ))}
-          </select>
+          <div className="flex flex-wrap items-center gap-3">
+            <div className="rounded-2xl border border-logica-light-lilac bg-white/90 px-4 py-3 text-sm font-semibold text-logica-purple shadow">
+              <p className="text-[11px] uppercase tracking-wide text-logica-lilac">Filtro</p>
+              <div className="flex items-center gap-2">
+                <span className="h-2 w-2 rounded-full bg-logica-purple" />
+                {companyName}
+              </div>
+            </div>
+            <select
+              value={selectedCompany}
+              onChange={(event) => onSelectCompany(event.target.value as typeof selectedCompany)}
+              className="rounded-full border border-logica-lilac bg-white px-4 py-3 text-sm font-semibold text-logica-purple shadow transition focus:border-logica-purple focus:outline-none"
+            >
+              <option value="all">Todas as empresas</option>
+              {companies.map((company) => (
+                <option key={company.id} value={company.id}>
+                  {company.name}
+                </option>
+              ))}
+            </select>
+          </div>
         </div>
       </header>
+
+      <section className="grid gap-4 md:grid-cols-3">
+        <div className={`${cardBaseClass} border-logica-purple/30 bg-gradient-to-br from-logica-light-lilac/70 via-white to-white`}>
+          <div className="mb-3 flex items-center justify-between text-sm font-semibold text-logica-purple">
+            <span>Saúde da carteira</span>
+            <span className="text-xs text-logica-lilac">{completionRate}%</span>
+          </div>
+          <div className="h-3 rounded-full bg-logica-light-lilac/70">
+            <div
+              className="h-3 rounded-full bg-gradient-to-r from-emerald-400 to-logica-purple"
+              style={{ width: `${completionRate}%` }}
+            />
+          </div>
+          <p className="mt-3 text-xs text-logica-lilac">
+            Percentual de parcelas já liquidadas considerando todos os contratos ativos.
+          </p>
+        </div>
+        <div className={`${cardBaseClass} border-logica-rose/30 bg-gradient-to-br from-white via-logica-light-lilac/60 to-white`}>
+          <div className="flex items-center justify-between text-sm font-semibold text-logica-purple">
+            <span>Alertas imediatos</span>
+            <span className="rounded-full bg-rose-100 px-2 py-1 text-[11px] text-rose-700">
+              {overdueInstallments.length} itens
+            </span>
+          </div>
+          <div className="mt-3 space-y-2 text-xs text-logica-purple">
+            <div className="flex items-center justify-between rounded-xl bg-white/80 px-3 py-2 shadow-inner">
+              <span>Em atraso</span>
+              <span className="font-semibold text-rose-600">{formatCurrency(overdueValue)}</span>
+            </div>
+            <div className="flex items-center justify-between rounded-xl bg-white/80 px-3 py-2 shadow-inner">
+              <span>Previstas em 7 dias</span>
+              <span className="font-semibold text-logica-purple">{next7DaysCount} parcelas</span>
+            </div>
+          </div>
+        </div>
+        <div className={`${cardBaseClass} border-logica-purple/30 bg-gradient-to-br from-white via-white to-logica-light-lilac/60`}>
+          <div className="flex items-center justify-between text-sm font-semibold text-logica-purple">
+            <span>Projeção de 30 dias</span>
+            <span className="rounded-full bg-logica-light-lilac/80 px-2 py-1 text-[11px] text-logica-purple">
+              {next30DaysCount} lançamentos
+            </span>
+          </div>
+          <p className="mt-2 text-2xl font-bold text-logica-purple">{formatCurrency(next30DaysValue)}</p>
+          <p className="text-xs text-logica-lilac">
+            Fluxo financeiro estimado com base nos lançamentos futuros cadastrados.
+          </p>
+        </div>
+      </section>
 
       <section className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4 2xl:grid-cols-5">
         {summaryCards.map((card) => (
@@ -287,9 +373,14 @@ export function Dashboard({
               <h2 className="text-lg font-semibold text-logica-purple">Fluxo de parcelas</h2>
               <p className="text-xs text-logica-lilac">Projeção dos próximos meses</p>
             </div>
-            <p className="text-xs font-semibold text-logica-purple">
-              {formatCurrency(upcomingInstallmentsValue)} em aberto
-            </p>
+            <div className="flex flex-wrap items-center gap-2 text-xs font-semibold text-logica-purple">
+              <span className="rounded-full bg-logica-light-lilac/70 px-3 py-1 shadow-inner">
+                {formatCurrency(upcomingInstallmentsValue)} em aberto
+              </span>
+              <span className="rounded-full bg-emerald-50 px-3 py-1 text-emerald-700 ring-1 ring-emerald-100">
+                {completionRate}% adimplência
+              </span>
+            </div>
           </div>
           <div className="relative mt-2">
             <div className="absolute inset-0 grid grid-rows-4 text-[10px] text-logica-lilac">
