@@ -22,8 +22,11 @@ Inclui autenticação via Supabase, dashboards interativos e utilitários para s
 
    ```bash
    cp .env.example .env
-   # edite o arquivo criado com a URL e a chave anônima do seu projeto Supabase
+   # edite o arquivo criado com a URL, a chave anônima e a service role do seu projeto Supabase
    ```
+
+   > A service role é necessária para que a tela de Convites de Usuário consiga enviar os convites por e-mail.
+   > Guarde essa chave em local seguro e não a commite no repositório.
 
 3. Aplique a estrutura de banco descrita em `supabase/schema.sql` usando o SQL Editor do Supabase ou a CLI:
 
