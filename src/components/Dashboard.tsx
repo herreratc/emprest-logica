@@ -14,6 +14,94 @@ const monthReferenceFormatter = new Intl.DateTimeFormat("pt-BR", {
 const cardBaseClass =
   "rounded-2xl border border-logica-light-lilac/70 bg-white/90 p-5 shadow-lg shadow-logica-light-lilac/50 backdrop-blur transition hover:-translate-y-0.5 hover:shadow-xl";
 
+const iconClass = "h-5 w-5";
+
+const summaryIcons = {
+  document: (
+    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.7" className={iconClass}>
+      <path strokeLinecap="round" strokeLinejoin="round" d="M9 5.25h6M9 9.75h6M9 14.25h6" />
+      <path
+        strokeLinecap="round"
+        strokeLinejoin="round"
+        d="M4.5 5.25A2.25 2.25 0 0 1 6.75 3h7.005c.596 0 1.167.237 1.588.659l2.998 2.998a2.25 2.25 0 0 1 .659 1.591V18.75A2.25 2.25 0 0 1 16.75 21h-10A2.25 2.25 0 0 1 4.5 18.75V5.25Z"
+      />
+    </svg>
+  ),
+  layers: (
+    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.7" className={iconClass}>
+      <path strokeLinecap="round" strokeLinejoin="round" d="m12 3 8.25 4.5L12 12 3.75 7.5 12 3Z" />
+      <path strokeLinecap="round" strokeLinejoin="round" d="M20.25 12 12 16.5 3.75 12" />
+      <path strokeLinecap="round" strokeLinejoin="round" d="M20.25 16.5 12 21l-8.25-4.5" />
+    </svg>
+  ),
+  cash: (
+    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.7" className={iconClass}>
+      <path strokeLinecap="round" strokeLinejoin="round" d="M4.5 6.75h15v10.5h-15z" />
+      <path strokeLinecap="round" strokeLinejoin="round" d="M6.75 9.75v.75M6.75 13.5v.75M17.25 9.75v.75M17.25 13.5v.75" />
+      <path strokeLinecap="round" strokeLinejoin="round" d="M12 10.5c-1.25 0-1.25 1.5 0 1.5s1.25 1.5 0 1.5c-1.25 0-1.25 1.5 0 1.5" />
+      <path strokeLinecap="round" strokeLinejoin="round" d="M12 9.75v.75m0 4.5v.75" />
+    </svg>
+  ),
+  pie: (
+    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.7" className={iconClass}>
+      <path strokeLinecap="round" strokeLinejoin="round" d="M12 3.75a8.25 8.25 0 1 1-8.25 8.25H12z" />
+      <path strokeLinecap="round" strokeLinejoin="round" d="M12 3.75V12l6.364-6.364A8.225 8.225 0 0 0 12 3.75Z" />
+    </svg>
+  ),
+  wallet: (
+    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.7" className={iconClass}>
+      <path
+        strokeLinecap="round"
+        strokeLinejoin="round"
+        d="M4.5 7.5h15A1.5 1.5 0 0 1 21 9v7.5a1.5 1.5 0 0 1-1.5 1.5h-15A1.5 1.5 0 0 1 3 16.5V9A1.5 1.5 0 0 1 4.5 7.5Z"
+      />
+      <path strokeLinecap="round" strokeLinejoin="round" d="M16.5 12.75A.75.75 0 1 1 15 12.75a.75.75 0 0 1 1.5 0Z" />
+      <path strokeLinecap="round" strokeLinejoin="round" d="M3 9.75h16.5" />
+    </svg>
+  ),
+  clock: (
+    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.7" className={iconClass}>
+      <path strokeLinecap="round" strokeLinejoin="round" d="M12 6v6l3 1.5" />
+      <circle cx="12" cy="12" r="8.25" />
+    </svg>
+  ),
+  calendar: (
+    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.7" className={iconClass}>
+      <path strokeLinecap="round" strokeLinejoin="round" d="M6.75 4.5V6m10.5-1.5V6" />
+      <path strokeLinecap="round" strokeLinejoin="round" d="M4.5 9.75h15" />
+      <rect x="4.5" y="6" width="15" height="13.5" rx="2" />
+    </svg>
+  ),
+  shield: (
+    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.7" className={iconClass}>
+      <path
+        strokeLinecap="round"
+        strokeLinejoin="round"
+        d="m9.75 12.75 1.5 1.5 3-3m3-4.227a45.284 45.284 0 0 1-5.933-1.853.75.75 0 0 0-.634 0A45.284 45.284 0 0 1 6.75 7.023v5.58a7.125 7.125 0 0 0 4.063 6.426l1.187.541a.75.75 0 0 0 .6 0l1.187-.54a7.125 7.125 0 0 0 4.063-6.427v-5.58Z"
+      />
+    </svg>
+  )
+};
+
+const badgeIcons = {
+  bell: (
+    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" className={iconClass}>
+      <path
+        strokeLinecap="round"
+        strokeLinejoin="round"
+        d="M14.25 18.75a2.25 2.25 0 0 1-4.5 0m-4.5 0h13.5M4.5 18.75h-.75a.75.75 0 0 1-.75-.75V15c0-2.56 1.734-4.706 4.05-5.33a4.878 4.878 0 0 1 9.9 0A5.625 5.625 0 0 1 21 15v3a.75.75 0 0 1-.75.75h-.75"
+      />
+    </svg>
+  ),
+  alert: (
+    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" className={iconClass}>
+      <path strokeLinecap="round" strokeLinejoin="round" d="M12 9v3.75" />
+      <path strokeLinecap="round" strokeLinejoin="round" d="M12 16.5h.007" />
+      <path strokeLinecap="round" strokeLinejoin="round" d="M10.125 3.75 3 18.75h18l-7.125-15" />
+    </svg>
+  )
+};
+
 type DashboardProps = {
   companies: Company[];
   selectedCompany: string | "all";
@@ -42,7 +130,6 @@ export function Dashboard({
   const overdueInstallments = upcomingInstallments.filter(
     (installment) => new Date(installment.date) < today && installment.status === "pendente"
   );
-  const overdueValue = overdueInstallments.reduce((acc, installment) => acc + installment.value, 0);
   const averageProjection = upcomingInstallments.length
     ? upcomingInstallmentsValue / Math.min(3, upcomingInstallments.length)
     : 0;
@@ -167,82 +254,81 @@ export function Dashboard({
     }
   ];
 
-  const toneStyles: Record<"purple" | "rose", string> = {
-    purple: "border-logica-purple/20 shadow-logica-purple/15",
-    rose: "border-logica-rose/20 shadow-logica-rose/15"
+  const toneStyles: Record<"purple" | "rose", { card: string; icon: string }> = {
+    purple: {
+      card: "border-logica-purple/20 shadow-logica-purple/15",
+      icon: "bg-logica-purple/10 text-logica-purple"
+    },
+    rose: {
+      card: "border-logica-rose/20 shadow-logica-rose/15",
+      icon: "bg-rose-100 text-rose-600"
+    }
   };
 
   type SummaryCard = {
     label: string;
     value: string | number;
     description: string;
-    icon: string;
+    icon: keyof typeof summaryIcons;
     tone: keyof typeof toneStyles;
     progress?: number;
   };
 
   const summaryCards: SummaryCard[] = [
     {
-      label: "Empresa",
-      value: companyName,
-      description: `${loans.length + consortiums.length} contratos vinculados`,
-      icon: "🏢",
-      tone: "purple"
-    },
-    {
       label: "Total de empréstimos",
       value: loans.length,
       description: "Contratos ativos e finalizados",
-      icon: "📄",
+      icon: "document",
       tone: "rose"
     },
     {
       label: "Total de consórcios",
       value: consortiums.length,
       description: "Operações em acompanhamento",
-      icon: "💠",
+      icon: "layers",
       tone: "purple"
     },
     {
       label: "Empréstimos em R$",
       value: formatCurrency(totalLoanValue),
       description: "Saldo atual a pagar",
-      icon: "💸",
+      icon: "cash",
       tone: "rose"
     },
     {
       label: "Consórcios em R$",
       value: formatCurrency(totalConsortiumValue),
       description: "Saldo devedor das cotas",
-      icon: "📊",
+      icon: "pie",
       tone: "purple"
     },
     {
       label: "Dívida total",
       value: formatCurrency(totalDebt),
       description: "Empréstimos + consórcios",
-      icon: "🧾",
+      icon: "wallet",
       tone: "purple"
     },
     {
       label: "Parcelas pendentes",
       value: pendingInstallmentsCount,
       description: `${formatCurrency(upcomingInstallmentsValue)} aguardando liquidação`,
-      icon: "⏳",
+      icon: "clock",
       tone: "rose"
     },
     {
       label: "Próximos pagamentos",
       value: formatCurrency(upcomingInstallmentsValue),
       description: "Parcelas ainda não pagas",
-      icon: "📆",
+      icon: "calendar",
       tone: "purple"
     },
     {
       label: "Taxa de adimplência",
       value: `${completionRate}%`,
       description: `Baseada em ${installments.length} parcelas`,
-      icon: "✅",
+      icon: "shield",
       tone: "purple",
       progress: completionRate
     }
@@ -262,15 +348,17 @@ export function Dashboard({
               Indicadores consolidados dos empréstimos e consórcios cadastrados na plataforma.
             </p>
             <div className="flex flex-wrap gap-2 text-xs text-logica-purple">
-              <span className="rounded-full bg-white/90 px-3 py-1 font-semibold shadow-inner">
-                {companyName}
-              </span>
-              <span className="flex items-center gap-1 rounded-full bg-white/80 px-3 py-1 font-semibold shadow-inner">
-                🔔 {next7DaysCount} vencimentos em 7 dias
-              </span>
-              <span className="flex items-center gap-1 rounded-full bg-white/80 px-3 py-1 font-semibold shadow-inner">
-                ⚠️ {overdueInstallments.length} em atraso
-              </span>
+              <span className="rounded-full bg-white/90 px-3 py-1 font-semibold shadow-inner">{companyName}</span>
+              {next7DaysCount > 0 && (
+                <span className="flex items-center gap-2 rounded-full bg-white/80 px-3 py-1 font-semibold shadow-inner text-logica-purple">
+                  <span className="text-logica-purple">{badgeIcons.bell}</span> {next7DaysCount} vencimentos em 7 dias
+                </span>
+              )}
+              {overdueInstallments.length > 0 && (
+                <span className="flex items-center gap-2 rounded-full bg-white/80 px-3 py-1 font-semibold shadow-inner text-rose-600">
+                  <span className="text-rose-500">{badgeIcons.alert}</span> {overdueInstallments.length} em atraso
+                </span>
+              )}
             </div>
           </div>
           <div className="flex flex-wrap items-center gap-3">
@@ -297,40 +385,7 @@ export function Dashboard({
         </div>
       </header>
 
-      <section className="grid gap-4 md:grid-cols-3">
-        <div className={`${cardBaseClass} border-logica-purple/30 bg-gradient-to-br from-logica-light-lilac/70 via-white to-white`}>
-          <div className="mb-3 flex items-center justify-between text-sm font-semibold text-logica-purple">
-            <span>Saúde da carteira</span>
-            <span className="text-xs text-logica-lilac">{completionRate}%</span>
-          </div>
-          <div className="h-3 rounded-full bg-logica-light-lilac/70">
-            <div
-              className="h-3 rounded-full bg-gradient-to-r from-emerald-400 to-logica-purple"
-              style={{ width: `${completionRate}%` }}
-            />
-          </div>
-          <p className="mt-3 text-xs text-logica-lilac">
-            Percentual de parcelas já liquidadas considerando todos os contratos ativos.
-          </p>
-        </div>
-        <div className={`${cardBaseClass} border-logica-rose/30 bg-gradient-to-br from-white via-logica-light-lilac/60 to-white`}>
-          <div className="flex items-center justify-between text-sm font-semibold text-logica-purple">
-            <span>Alertas imediatos</span>
-            <span className="rounded-full bg-rose-100 px-2 py-1 text-[11px] text-rose-700">
-              {overdueInstallments.length} itens
-            </span>
-          </div>
-          <div className="mt-3 space-y-2 text-xs text-logica-purple">
-            <div className="flex items-center justify-between rounded-xl bg-white/80 px-3 py-2 shadow-inner">
-              <span>Em atraso</span>
-              <span className="font-semibold text-rose-600">{formatCurrency(overdueValue)}</span>
-            </div>
-            <div className="flex items-center justify-between rounded-xl bg-white/80 px-3 py-2 shadow-inner">
-              <span>Previstas em 7 dias</span>
-              <span className="font-semibold text-logica-purple">{next7DaysCount} parcelas</span>
-            </div>
-          </div>
-        </div>
+      <section className="grid gap-4">
         <div className={`${cardBaseClass} border-logica-purple/30 bg-gradient-to-br from-white via-white to-logica-light-lilac/60`}>
           <div className="flex items-center justify-between text-sm font-semibold text-logica-purple">
             <span>Projeção de 30 dias</span>
@@ -347,10 +402,14 @@ export function Dashboard({
 
       <section className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4 2xl:grid-cols-5">
         {summaryCards.map((card) => (
-          <div key={card.label} className={`${cardBaseClass} ${toneStyles[card.tone]}`}>
+          <div key={card.label} className={`${cardBaseClass} ${toneStyles[card.tone].card}`}>
             <div className="flex items-center justify-between">
               <p className="text-xs font-semibold uppercase tracking-wide text-logica-lilac">{card.label}</p>
-              <span className="text-lg">{card.icon}</span>
+              <span
+                className={`flex h-9 w-9 items-center justify-center rounded-xl ${toneStyles[card.tone].icon} shadow-inner`}
+              >
+                {summaryIcons[card.icon]}
+              </span>
             </div>
             <p className="mt-2 text-3xl font-bold text-logica-purple">{card.value}</p>
             <p className="text-xs text-logica-lilac">{card.description}</p>
