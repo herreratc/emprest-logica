@@ -60,7 +60,18 @@ export function LoginView() {
             </div>
             {!isConfigured && (
               <div className="flex items-start gap-3 rounded-xl border border-yellow-200/50 bg-yellow-100/10 p-3 text-sm text-yellow-50">
-                <span className="mt-0.5 text-lg">⚠️</span>
+                <svg
+                  xmlns="http://www.w3.org/2000/svg"
+                  viewBox="0 0 24 24"
+                  fill="none"
+                  stroke="currentColor"
+                  strokeWidth="1.8"
+                  className="mt-0.5 h-5 w-5"
+                >
+                  <path strokeLinecap="round" strokeLinejoin="round" d="M12 9v3.75" />
+                  <path strokeLinecap="round" strokeLinejoin="round" d="M12 16.5h.007" />
+                  <path strokeLinecap="round" strokeLinejoin="round" d="M10.125 3.75 3 18.75h18l-7.125-15" />
+                </svg>
                 <div>
                   <p className="font-semibold">Variáveis de ambiente pendentes</p>
                   <p className="text-white/80">
