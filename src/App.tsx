@@ -51,14 +51,6 @@ function IconLogout() {
   );
 }
 
-function IconFilter() {
-  return (
-    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" className={iconClass}>
-      <path strokeLinecap="round" strokeLinejoin="round" d="M4 6h16M7 12h10M10 18h4" />
-    </svg>
-  );
-}
-
 function AppContent() {
   const { user, loading, isConfigured, signOut } = useAuth();
   const [view, setView] = useState<ViewKey>("dashboard");
@@ -166,62 +158,30 @@ function AppContent() {
             {displayName}
           </div>
         </div>
-        <div className="mb-6 flex flex-col gap-4 rounded-2xl border border-logica-light-lilac bg-white/85 p-4 shadow-md sm:flex-row sm:items-start sm:justify-between">
-          <div className="flex flex-1 items-center gap-3">
+        <div className="mb-6 flex flex-col gap-4 rounded-2xl border border-logica-light-lilac bg-white/85 p-4 shadow-md sm:flex-row sm:items-center sm:justify-between">
+          <div className="flex items-center gap-3">
             <div className="rounded-2xl bg-logica-light-lilac p-2 shadow-inner shadow-logica-light-lilac/80">
               <img src="/logo.svg" alt="Lógica" className="h-12 w-12" />
             </div>
             <div className="space-y-1">
               <p className="text-xs font-semibold uppercase tracking-wide text-logica-lilac">Painel financeiro</p>
               <p className="text-lg font-semibold text-logica-purple">{displayName}</p>
-              <p className="text-xs text-logica-lilac">{companies.length} empresas cadastradas</p>
             </div>
           </div>
-          <div className="flex flex-1 flex-col gap-3 sm:items-end">
-            <div className="flex flex-wrap items-center gap-3">
-              <div className="rounded-xl border border-logica-light-lilac bg-logica-light-lilac/50 px-4 py-3 text-sm text-logica-purple shadow-inner">
-                <p className="text-[11px] uppercase tracking-wide text-logica-lilac">Filtro ativo</p>
-                <div className="mt-1 flex items-center gap-2 font-semibold text-logica-deep-purple">
-                  <IconFilter />
-                  {selectedCompany === "all" ? "Todas as empresas (visão consolidada)" : activeCompany?.name ?? "Selecionar"}
-                </div>
-              </div>
-              {user ? (
-                <div className="flex items-center gap-2 rounded-full border border-logica-light-lilac bg-white px-3 py-2 text-sm font-semibold text-logica-purple shadow-sm">
-                  <IconUser />
-                  <span className="whitespace-nowrap">{displayName}</span>
-                  <span className="h-4 w-px bg-logica-light-lilac" aria-hidden />
-                  <button
-                    type="button"
-                    onClick={handleSignOut}
-                    className="flex items-center gap-1 rounded-full px-2 py-1 text-xs font-semibold text-logica-purple transition hover:text-logica-deep-purple"
-                  >
-                    <IconLogout />
-                    Sair
-                  </button>
-                </div>
-              ) : (
-                <div className="rounded-full bg-logica-light-lilac px-3 py-2 text-sm font-semibold text-logica-purple">
-                  Login necessário para sincronizar
-                </div>
-              )}
+          {user ? (
+            <button
+              type="button"
+              onClick={handleSignOut}
+              className="flex items-center gap-2 rounded-full border border-logica-light-lilac bg-white px-4 py-2 text-sm font-semibold text-logica-purple shadow-sm transition hover:border-logica-purple hover:text-logica-deep-purple"
+            >
+              <IconLogout />
+              Sair
+            </button>
+          ) : (
+            <div className="rounded-full bg-logica-light-lilac px-3 py-2 text-sm font-semibold text-logica-purple">
+              Login necessário para sincronizar
             </div>
-            <label className="flex flex-col text-xs font-semibold uppercase tracking-wide text-logica-lilac">
-              Selecionar empresa
-              <select
-                value={selectedCompany}
-                onChange={(event) => setSelectedCompany(event.target.value as typeof selectedCompany)}
-                className="mt-1 min-w-[220px] rounded-full border border-logica-lilac bg-white px-4 py-2 text-sm font-semibold text-logica-purple shadow transition focus:border-logica-purple focus:outline-none"
-              >
-                <option value="all">Todas as empresas</option>
-                {companies.map((company) => (
-                  <option key={company.id} value={company.id}>
-                    {company.name}
-                  </option>
-                ))}
-              </select>
-            </label>
-          </div>
+          )}
         </div>
         {signOutError && (
           <div className="mb-4 rounded-2xl border border-rose-200 bg-rose-50 p-3 text-sm text-rose-700">

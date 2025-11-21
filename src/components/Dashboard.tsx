@@ -14,7 +14,7 @@ const monthReferenceFormatter = new Intl.DateTimeFormat("pt-BR", {
 const cardBaseClass =
   "rounded-2xl border border-logica-light-lilac/70 bg-white/90 p-5 shadow-lg shadow-logica-light-lilac/50 backdrop-blur transition hover:-translate-y-0.5 hover:shadow-xl";
 
-const iconClass = "h-5 w-5 text-logica-purple";
+const iconClass = "h-5 w-5";
 
 const summaryIcons = {
   document: (
@@ -130,7 +130,6 @@ export function Dashboard({
   const overdueInstallments = upcomingInstallments.filter(
     (installment) => new Date(installment.date) < today && installment.status === "pendente"
   );
-  const overdueValue = overdueInstallments.reduce((acc, installment) => acc + installment.value, 0);
   const averageProjection = upcomingInstallments.length
     ? upcomingInstallmentsValue / Math.min(3, upcomingInstallments.length)
     : 0;
@@ -255,9 +254,15 @@ export function Dashboard({
     }
   ];
 
-  const toneStyles: Record<"purple" | "rose", string> = {
-    purple: "border-logica-purple/20 shadow-logica-purple/15",
-    rose: "border-logica-rose/20 shadow-logica-rose/15"
+  const toneStyles: Record<"purple" | "rose", { card: string; icon: string }> = {
+    purple: {
+      card: "border-logica-purple/20 shadow-logica-purple/15",
+      icon: "bg-logica-purple/10 text-logica-purple"
+    },
+    rose: {
+      card: "border-logica-rose/20 shadow-logica-rose/15",
+      icon: "bg-rose-100 text-rose-600"
+    }
   };
 
   type SummaryCard = {
@@ -343,15 +348,17 @@ export function Dashboard({
               Indicadores consolidados dos empréstimos e consórcios cadastrados na plataforma.
             </p>
             <div className="flex flex-wrap gap-2 text-xs text-logica-purple">
-              <span className="rounded-full bg-white/90 px-3 py-1 font-semibold shadow-inner">
-                {companyName}
-              </span>
-              <span className="flex items-center gap-2 rounded-full bg-white/80 px-3 py-1 font-semibold shadow-inner">
-                {badgeIcons.bell} {next7DaysCount} vencimentos em 7 dias
-              </span>
-              <span className="flex items-center gap-2 rounded-full bg-white/80 px-3 py-1 font-semibold shadow-inner">
-                {badgeIcons.alert} {overdueInstallments.length} em atraso
-              </span>
+              <span className="rounded-full bg-white/90 px-3 py-1 font-semibold shadow-inner">{companyName}</span>
+              {next7DaysCount > 0 && (
+                <span className="flex items-center gap-2 rounded-full bg-white/80 px-3 py-1 font-semibold shadow-inner text-logica-purple">
+                  <span className="text-logica-purple">{badgeIcons.bell}</span> {next7DaysCount} vencimentos em 7 dias
+                </span>
+              )}
+              {overdueInstallments.length > 0 && (
+                <span className="flex items-center gap-2 rounded-full bg-white/80 px-3 py-1 font-semibold shadow-inner text-rose-600">
+                  <span className="text-rose-500">{badgeIcons.alert}</span> {overdueInstallments.length} em atraso
+                </span>
+              )}
             </div>
           </div>
           <div className="flex flex-wrap items-center gap-3">
@@ -378,38 +385,7 @@ export function Dashboard({
         </div>
       </header>
 
-      <section className="grid gap-4 md:grid-cols-2">
-        <div className={`${cardBaseClass} border-logica-purple/30 bg-gradient-to-br from-logica-light-lilac/70 via-white to-white`}>
-          <div className="mb-3 flex items-center justify-between text-sm font-semibold text-logica-purple">
-            <span>Saúde da carteira</span>
-            <span className="text-xs text-logica-lilac">{completionRate}%</span>
-          </div>
-          <div className="h-3 rounded-full bg-logica-light-lilac/70">
-            <div
-              className="h-3 rounded-full bg-gradient-to-r from-emerald-400 to-logica-purple"
-              style={{ width: `${completionRate}%` }}
-            />
-          </div>
-          <div className="mt-4 grid gap-2 rounded-xl bg-white/70 p-3 text-xs text-logica-purple shadow-inner sm:grid-cols-2">
-            <div className="flex items-center justify-between">
-              <span className="flex items-center gap-2 text-logica-lilac">
-                {badgeIcons.alert}
-                Atrasadas
-              </span>
-              <span className="font-semibold text-rose-600">{formatCurrency(overdueValue)}</span>
-            </div>
-            <div className="flex items-center justify-between">
-              <span className="flex items-center gap-2 text-logica-lilac">
-                {badgeIcons.bell}
-                Até 7 dias
-              </span>
-              <span className="font-semibold text-logica-purple">{next7DaysCount} parcelas</span>
-            </div>
-          </div>
-          <p className="mt-3 text-xs text-logica-lilac">
-            Percentual de parcelas liquidadas e status dos próximos vencimentos.
-          </p>
-        </div>
+      <section className="grid gap-4">
         <div className={`${cardBaseClass} border-logica-purple/30 bg-gradient-to-br from-white via-white to-logica-light-lilac/60`}>
           <div className="flex items-center justify-between text-sm font-semibold text-logica-purple">
             <span>Projeção de 30 dias</span>
@@ -426,10 +402,12 @@ export function Dashboard({
 
       <section className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4 2xl:grid-cols-5">
         {summaryCards.map((card) => (
-          <div key={card.label} className={`${cardBaseClass} ${toneStyles[card.tone]}`}>
+          <div key={card.label} className={`${cardBaseClass} ${toneStyles[card.tone].card}`}>
             <div className="flex items-center justify-between">
               <p className="text-xs font-semibold uppercase tracking-wide text-logica-lilac">{card.label}</p>
-              <span className="flex h-9 w-9 items-center justify-center rounded-xl bg-logica-light-lilac/70 text-logica-purple">
+              <span
+                className={`flex h-9 w-9 items-center justify-center rounded-xl ${toneStyles[card.tone].icon} shadow-inner`}
+              >
                 {summaryIcons[card.icon]}
               </span>
             </div>
