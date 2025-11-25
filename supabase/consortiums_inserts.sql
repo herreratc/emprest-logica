@@ -1,11 +1,11 @@
 -- Scripts para incluir consórcios no Supabase a partir do SQL Editor.
--- Ele assume que todos os contratos pertencem à empresa com apelido "Transporte A.".
+-- Ele assume que todos os contratos pertencem à empresa "Logica Distribuicao".
 -- Ajuste o filtro da CTE target_company caso os registros precisem ser vinculados a outra empresa.
 
 with target_company as (
   select id
   from public.companies
-  where nickname = 'Transporte A.'
+  where name = 'Logica Distribuicao'
   limit 1
 )
 insert into public.consortiums (
@@ -46,7 +46,6 @@ cross join (
     ('Virtus Lincoln', '40063', '101', 22527.18, 949.51, 24, 'Bradesco', 0, 'VEICULO'),
     ('Consórcio Itaú grupo 40051 cota 119', '40051', '119', 150865.64, 1289.27, 117, 'Itaú (Matriz)', 185586.00, 'IMOVEIS'),
     ('Compass Leandro', '20179', '188', 13664.55, 816.89, 17, 'Itaú (Matriz)', 0, 'VEICULO'),
-    ('Caminhão placa PVN-4A69', '20447', '24', 4242.22, 1509.45, 3, 'Itaú (Matriz)', 0, 'VEICULO'),
     ('Caminhão placa PUQ-7F52', '20303', '441', 14555.03, 1344.36, 11, 'Itaú (Filial)', 0, 'VEICULO'),
     ('Consórcio Sicoob grupo 1328 cota 79', '1328', '79', 229472.38, 2164.03, 106, 'Sicoob', 272277.00, 'VEICULO'),
     ('Consórcio Sicoob grupo 1414 cota 11', '1414', '11', 57854.11, 903.95, 64, 'Sicoob', 68408.00, 'VEICULO'),
@@ -55,6 +54,7 @@ cross join (
     ('Consórcio Santander 84/30 - 3', '84', '30', 114298.80, 1360.70, 84, 'Santander', 100000.00, 'VEICULO'),
     ('Consórcio Santander 84/30 - 4', '84', '30', 114298.80, 1360.70, 84, 'Santander', 100000.00, 'VEICULO'),
     ('Consórcio Santander 84/30 - 5', '84', '30', 114298.80, 1360.70, 84, 'Santander', 100000.00, 'VEICULO'),
+    ('Consórcio Santander 84/30 - 6', '84', '30', 114298.80, 1360.70, 84, 'Santander', 100000.00, 'VEICULO'),
     ('Mercedes Leandro 5029 · 0760-0', '5029', '0760-0', 29482.42, 440.04, 67, 'Bamaq', 0, 'VEICULO'),
     ('Mercedes Leandro 5029 · 0748-0', '5029', '0748-0', 29482.63, 440.04, 67, 'Bamaq', 0, 'VEICULO'),
     ('Mercedes Leandro 5029 · 0744-0', '5029', '0744-0', 29482.63, 440.04, 67, 'Bamaq', 0, 'VEICULO'),
