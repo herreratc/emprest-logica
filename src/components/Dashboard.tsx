@@ -7,6 +7,12 @@ const scheduleDateFormatter = new Intl.DateTimeFormat("pt-BR", {
   month: "short"
 });
 
+const scheduleDateWithYearFormatter = new Intl.DateTimeFormat("pt-BR", {
+  day: "2-digit",
+  month: "short",
+  year: "numeric"
+});
+
 const monthReferenceFormatter = new Intl.DateTimeFormat("pt-BR", {
   month: "short"
 });
@@ -109,6 +115,9 @@ type DashboardProps = {
   loans: Loan[];
   consortiums: Consortium[];
   installments: Installment[];
+  userName: string;
+  isAuthenticated: boolean;
+  onSignOut?: () => void;
 };
 
 export function Dashboard({
@@ -117,25 +126,38 @@ export function Dashboard({
   onSelectCompany,
   loans,
   consortiums,
-  installments
+  installments,
+  userName,
+  isAuthenticated,
+  onSignOut
 }: DashboardProps) {
-  const paidInstallments = installments.filter((installment) => installment.status === "paga");
-  const upcomingInstallments = installments.filter((installment) => installment.status !== "paga");
-  const pendingInstallmentsCount = installments.filter((installment) => installment.status === "pendente").length;
-  const totalLoanValue = loans.reduce((acc, loan) => acc + loan.amountToPay, 0);
-  const totalConsortiumValue = consortiums.reduce((acc, item) => acc + item.outstandingBalance, 0);
+  const activeLoans = useMemo(() => loans.filter((loan) => loan.status === "ativo"), [loans]);
+  const activeConsortiums = useMemo(() => consortiums, [consortiums]);
+  const activeInstallments = useMemo(() => {
+    const activeLoanIds = new Set(activeLoans.map((loan) => loan.id));
+    const activeConsortiumIds = new Set(activeConsortiums.map((item) => item.id));
+
+    return installments.filter((installment) => {
+      if (installment.contractType === "loan") {
+        return activeLoanIds.has(installment.contractId);
+      }
+      if (installment.contractType === "consortium") {
+        return activeConsortiumIds.has(installment.contractId);
+      }
+      return false;
+    });
+  }, [installments, activeLoans, activeConsortiums]);
+
+  const upcomingInstallments = activeInstallments.filter((installment) => installment.status !== "paga");
+  const totalLoanValue = activeLoans.reduce((acc, loan) => acc + loan.amountToPay, 0);
+  const totalConsortiumValue = activeConsortiums.reduce((acc, item) => acc + item.outstandingBalance, 0);
   const totalDebt = totalLoanValue + totalConsortiumValue;
   const upcomingInstallmentsValue = upcomingInstallments.reduce((acc, installment) => acc + installment.value, 0);
   const today = new Date();
   const overdueInstallments = upcomingInstallments.filter(
     (installment) => new Date(installment.date) < today && installment.status === "pendente"
   );
-  const averageProjection = upcomingInstallments.length
-    ? upcomingInstallmentsValue / Math.min(3, upcomingInstallments.length)
-    : 0;
-  const totalInstallmentsCount = installments.length || 1;
-  const completionRate = Math.round((paidInstallments.length / totalInstallmentsCount) * 100);
-  const contractCount = loans.length + consortiums.length;
+  const contractCount = activeLoans.length + activeConsortiums.length;
   const averageTicketValue = contractCount ? totalDebt / contractCount : 0;
 
   const upcomingWithin30Days = useMemo(() => {
@@ -164,13 +186,13 @@ export function Dashboard({
     startOfMonth.setDate(1);
     startOfMonth.setHours(0, 0, 0, 0);
 
-    return Array.from({ length: 6 }, (_, index) => {
+    return Array.from({ length: 12 }, (_, index) => {
       const monthDate = new Date(startOfMonth);
       monthDate.setMonth(startOfMonth.getMonth() + index);
       const nextMonth = new Date(monthDate);
       nextMonth.setMonth(monthDate.getMonth() + 1);
 
-      const value = installments.reduce((acc, installment) => {
+      const value = activeInstallments.reduce((acc, installment) => {
         const installmentDate = new Date(installment.date);
         if (installment.status === "paga") return acc;
         if (installmentDate >= monthDate && installmentDate < nextMonth) {
@@ -180,14 +202,15 @@ export function Dashboard({
       }, 0);
 
       const label = monthReferenceFormatter.format(monthDate).replace(".", "");
+      const capitalized = label.charAt(0).toUpperCase() + label.slice(1);
 
       return {
         key: `${monthDate.getFullYear()}-${monthDate.getMonth()}`,
-        label: label.charAt(0).toUpperCase() + label.slice(1),
+        label: `${capitalized} ${monthDate.getFullYear()}`,
         value
       };
     });
-  }, [installments]);
+  }, [activeInstallments]);
 
   const maxMonthlyCashflow = Math.max(1, ...monthlyCashflow.map((month) => month.value));
   const loanShare = totalDebt ? Math.round((totalLoanValue / totalDebt) * 100) : 0;
@@ -229,6 +252,18 @@ export function Dashboard({
       .slice(0, 5);
   }, [upcomingInstallments]);
 
+  const schedulePeriodRange = useMemo(() => {
+    if (upcomingInstallments.length === 0) return null;
+    const ordered = [...upcomingInstallments].sort(
+      (a, b) => new Date(a.date).getTime() - new Date(b.date).getTime()
+    );
+    const firstDate = scheduleDateWithYearFormatter.format(new Date(ordered[0].date)).replace(".", "");
+    const lastDate = scheduleDateWithYearFormatter
+      .format(new Date(ordered[ordered.length - 1].date))
+      .replace(".", "");
+    return `${firstDate} — ${lastDate}`;
+  }, [upcomingInstallments]);
+
   const executiveHighlights = [
     {
       label: "Ticket médio por contrato",
@@ -244,13 +279,10 @@ export function Dashboard({
       label: "Maior parcela prevista",
       value: formatCurrency(highestUpcomingInstallment?.value ?? 0),
       description: highestUpcomingInstallment
-        ? `Para ${scheduleDateFormatter.format(new Date(highestUpcomingInstallment.date)).replace(".", "")}`
+        ? `Para ${scheduleDateWithYearFormatter
+            .format(new Date(highestUpcomingInstallment.date))
+            .replace(".", "")}`
         : "Nenhum lançamento futuro"
-    },
-    {
-      label: "Comprometimento médio",
-      value: formatCurrency(averageProjection),
-      description: "Estimativa média por lançamento futuro"
     }
   ];
 
@@ -277,14 +309,14 @@ export function Dashboard({
   const summaryCards: SummaryCard[] = [
     {
       label: "Total de empréstimos",
-      value: loans.length,
-      description: "Contratos ativos e finalizados",
+      value: activeLoans.length,
+      description: "Contratos ativos",
       icon: "document",
       tone: "rose"
     },
     {
       label: "Total de consórcios",
-      value: consortiums.length,
+      value: activeConsortiums.length,
       description: "Operações em acompanhamento",
       icon: "layers",
       tone: "purple"
@@ -311,26 +343,11 @@ export function Dashboard({
       tone: "purple"
     },
     {
-      label: "Parcelas pendentes",
-      value: pendingInstallmentsCount,
-      description: `${formatCurrency(upcomingInstallmentsValue)} aguardando liquidação`,
-      icon: "clock",
-      tone: "rose"
-    },
-    {
       label: "Próximos pagamentos",
       value: formatCurrency(upcomingInstallmentsValue),
       description: "Parcelas ainda não pagas",
       icon: "calendar",
       tone: "purple"
-    },
-    {
-      label: "Taxa de adimplência",
-      value: `${completionRate}%`,
-      description: `Baseada em ${installments.length} parcelas`,
-      icon: "shield",
-      tone: "purple",
-      progress: completionRate
     }
   ];
 
@@ -354,14 +371,29 @@ export function Dashboard({
                   <span className="text-logica-purple">{badgeIcons.bell}</span> {next7DaysCount} vencimentos em 7 dias
                 </span>
               )}
-              {overdueInstallments.length > 0 && (
-                <span className="flex items-center gap-2 rounded-full bg-white/80 px-3 py-1 font-semibold shadow-inner text-rose-600">
-                  <span className="text-rose-500">{badgeIcons.alert}</span> {overdueInstallments.length} em atraso
-                </span>
+            {overdueInstallments.length > 0 && (
+              <span className="flex items-center gap-2 rounded-full bg-white/80 px-3 py-1 font-semibold shadow-inner text-rose-600">
+                <span className="text-rose-500">{badgeIcons.alert}</span> {overdueInstallments.length} em atraso
+              </span>
+            )}
+          </div>
+        </div>
+          <div className="flex flex-wrap items-center gap-3">
+            <div className="flex items-center gap-3 rounded-2xl border border-logica-light-lilac bg-white/90 px-4 py-3 text-sm font-semibold text-logica-purple shadow">
+              <div>
+                <p className="text-[11px] uppercase tracking-wide text-logica-lilac">Usuário</p>
+                <p className="text-sm font-bold text-logica-purple">{userName}</p>
+              </div>
+              {isAuthenticated && onSignOut && (
+                <button
+                  type="button"
+                  onClick={onSignOut}
+                  className="rounded-full bg-logica-purple px-3 py-1 text-xs font-bold text-white shadow transition hover:bg-logica-deep-purple"
+                >
+                  Sair
+                </button>
               )}
             </div>
-          </div>
-          <div className="flex flex-wrap items-center gap-3">
             <div className="rounded-2xl border border-logica-light-lilac bg-white/90 px-4 py-3 text-sm font-semibold text-logica-purple shadow">
               <p className="text-[11px] uppercase tracking-wide text-logica-lilac">Filtro</p>
               <div className="flex items-center gap-2">
@@ -384,21 +416,6 @@ export function Dashboard({
           </div>
         </div>
       </header>
-
-      <section className="grid gap-4">
-        <div className={`${cardBaseClass} border-logica-purple/30 bg-gradient-to-br from-white via-white to-logica-light-lilac/60`}>
-          <div className="flex items-center justify-between text-sm font-semibold text-logica-purple">
-            <span>Projeção de 30 dias</span>
-            <span className="rounded-full bg-logica-light-lilac/80 px-2 py-1 text-[11px] text-logica-purple">
-              {next30DaysCount} lançamentos
-            </span>
-          </div>
-          <p className="mt-2 text-2xl font-bold text-logica-purple">{formatCurrency(next30DaysValue)}</p>
-          <p className="text-xs text-logica-lilac">
-            Fluxo financeiro estimado com base nos lançamentos futuros cadastrados.
-          </p>
-        </div>
-      </section>
 
       <section className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4 2xl:grid-cols-5">
         {summaryCards.map((card) => (
@@ -437,7 +454,7 @@ export function Dashboard({
                 {formatCurrency(upcomingInstallmentsValue)} em aberto
               </span>
               <span className="rounded-full bg-emerald-50 px-3 py-1 text-emerald-700 ring-1 ring-emerald-100">
-                {completionRate}% adimplência
+                {upcomingInstallments.length} lançamentos ativos
               </span>
             </div>
           </div>
@@ -452,17 +469,18 @@ export function Dashboard({
                 </div>
               ))}
             </div>
-            <div className="relative ml-16 flex h-48 items-end gap-3" role="list">
+            <div className="relative ml-16 flex h-56 items-end gap-3 overflow-visible" role="list">
               {monthlyCashflow.map((month) => {
                 const height = Math.round((month.value / maxMonthlyCashflow) * 100);
+                const barHeight = Math.max(height, month.value > 0 ? 8 : 4);
                 const isMax = month.value === maxMonthlyCashflow;
                 return (
                   <div key={month.key} className="flex-1" role="listitem" aria-label={`${month.label} ${formatCurrency(month.value)}`}>
                     <div className="group flex h-full flex-col items-center gap-3">
-                      <div className="flex h-full w-full items-end rounded-2xl bg-gradient-to-b from-white/60 via-logica-light-lilac/40 to-logica-light-lilac/70 p-1">
+                      <div className="flex h-full w-full items-end overflow-visible rounded-2xl bg-gradient-to-b from-white/60 via-logica-light-lilac/40 to-logica-light-lilac/70 p-1">
                         <div
                           className={`relative w-full rounded-xl bg-gradient-to-t from-logica-purple to-logica-rose shadow-inner transition-all group-hover:brightness-110 ${isMax ? "ring-2 ring-white/70" : ""}`}
-                          style={{ height: `${height}%` }}
+                          style={{ height: `${barHeight}%` }}
                         >
                           <span className="absolute inset-x-1 top-1 rounded-full bg-white/90 px-1 text-[10px] font-semibold text-logica-purple">
                             {formatCurrency(month.value)}
@@ -532,9 +550,14 @@ export function Dashboard({
             <div>
               <h2 className="text-lg font-semibold text-logica-purple">Cronograma de pagamentos</h2>
               <p className="text-xs text-logica-lilac">Próximas parcelas monitoradas</p>
+              {schedulePeriodRange && (
+                <p className="text-[11px] font-semibold text-logica-lilac/90">
+                  Período considerado: {schedulePeriodRange}
+                </p>
+              )}
             </div>
             <span className="rounded-full bg-logica-light-lilac/60 px-3 py-1 text-xs font-semibold text-logica-purple">
-              {upcomingInstallments.length} lançamentos futuros
+              Exibindo {nextInstallments.length} de {upcomingInstallments.length} lançamentos futuros
             </span>
           </div>
           <div className="overflow-hidden rounded-2xl border border-logica-light-lilac/80">

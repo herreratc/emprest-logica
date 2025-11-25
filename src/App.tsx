@@ -71,7 +71,6 @@ function AppContent() {
     deleteLoan,
     saveConsortium,
     deleteConsortium,
-    deleteInstallment,
     isUsingSupabase
   } = useSupabaseData();
 
@@ -213,6 +212,9 @@ function AppContent() {
             loans={filteredLoans}
             consortiums={filteredConsortiums}
             installments={filteredInstallments}
+            userName={displayName}
+            isAuthenticated={!!user}
+            onSignOut={user ? handleSignOut : undefined}
           />
         )}
         {view === "companies" && (
@@ -255,7 +257,6 @@ function AppContent() {
             consortiums={filteredConsortiums}
             selectedCompany={selectedCompany}
             onSelectCompany={setSelectedCompany}
-            onDeleteInstallment={deleteInstallment}
           />
         )}
         {view === "simulation" && <SimulationView />}

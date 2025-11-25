@@ -143,7 +143,7 @@ export function LoansView({
   onDeleteLoan,
   isUsingSupabase
 }: LoansViewProps) {
-  const [statusFilter, setStatusFilter] = useState<"todos" | "ativo" | "finalizado">("todos");
+  const [statusFilter, setStatusFilter] = useState<"todos" | "ativo" | "finalizado">("ativo");
   const [editing, setEditing] = useState<Loan | null>(null);
   const [form, setForm] = useState<LoanFormState>(initialLoanForm);
   const [feedback, setFeedback] = useState<FeedbackState>(null);
