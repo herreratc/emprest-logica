@@ -10,6 +10,7 @@ import { SimulationView } from "./components/SimulationView";
 import { UsersView } from "./components/UsersView";
 import { LoginView } from "./components/LoginView";
 import { useSupabaseData } from "./hooks/useSupabaseData";
+import { SettlementsView } from "./components/SettlementsView";
 
 type ViewKey =
   | "dashboard"
@@ -18,6 +19,7 @@ type ViewKey =
   | "consortiums"
   | "installments"
   | "simulation"
+  | "settlements"
   | "users";
 
 const iconClass = "h-4 w-4 text-logica-purple";
@@ -42,15 +44,6 @@ function IconUser() {
   );
 }
 
-function IconLogout() {
-  return (
-    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.6" className={iconClass}>
-      <path strokeLinecap="round" strokeLinejoin="round" d="M15.75 8.25 19.5 12l-3.75 3.75" />
-      <path strokeLinecap="round" strokeLinejoin="round" d="M19.5 12h-9.75m0 0V8.25m0 3.75V15.75M12 3H6.75A2.25 2.25 0 0 0 4.5 5.25v13.5A2.25 2.25 0 0 0 6.75 21H12" />
-    </svg>
-  );
-}
-
 function AppContent() {
   const { user, loading, isConfigured, signOut } = useAuth();
   const [view, setView] = useState<ViewKey>("dashboard");
@@ -71,6 +64,7 @@ function AppContent() {
     deleteLoan,
     saveConsortium,
     deleteConsortium,
+    saveInstallment,
     isUsingSupabase
   } = useSupabaseData();
 
@@ -157,31 +151,6 @@ function AppContent() {
             {displayName}
           </div>
         </div>
-        <div className="mb-6 flex flex-col gap-4 rounded-2xl border border-logica-light-lilac bg-white/85 p-4 shadow-md sm:flex-row sm:items-center sm:justify-between">
-          <div className="flex items-center gap-3">
-            <div className="rounded-2xl bg-logica-light-lilac p-2 shadow-inner shadow-logica-light-lilac/80">
-              <img src="/logo.svg" alt="Lógica" className="h-12 w-12" />
-            </div>
-            <div className="space-y-1">
-              <p className="text-xs font-semibold uppercase tracking-wide text-logica-lilac">Painel financeiro</p>
-              <p className="text-lg font-semibold text-logica-purple">{displayName}</p>
-            </div>
-          </div>
-          {user ? (
-            <button
-              type="button"
-              onClick={handleSignOut}
-              className="flex items-center gap-2 rounded-full border border-logica-light-lilac bg-white px-4 py-2 text-sm font-semibold text-logica-purple shadow-sm transition hover:border-logica-purple hover:text-logica-deep-purple"
-            >
-              <IconLogout />
-              Sair
-            </button>
-          ) : (
-            <div className="rounded-full bg-logica-light-lilac px-3 py-2 text-sm font-semibold text-logica-purple">
-              Login necessário para sincronizar
-            </div>
-          )}
-        </div>
         {signOutError && (
           <div className="mb-4 rounded-2xl border border-rose-200 bg-rose-50 p-3 text-sm text-rose-700">
             {signOutError}
@@ -257,6 +226,18 @@ function AppContent() {
             consortiums={filteredConsortiums}
             selectedCompany={selectedCompany}
             onSelectCompany={setSelectedCompany}
+            onSaveInstallment={saveInstallment}
+          />
+        )}
+        {view === "settlements" && (
+          <SettlementsView
+            companies={companies}
+            loans={filteredLoans}
+            consortiums={filteredConsortiums}
+            selectedCompany={selectedCompany}
+            onSelectCompany={setSelectedCompany}
+            onSaveLoan={saveLoan}
+            onSaveConsortium={saveConsortium}
           />
         )}
         {view === "simulation" && <SimulationView />}

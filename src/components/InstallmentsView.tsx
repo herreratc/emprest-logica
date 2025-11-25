@@ -1,6 +1,7 @@
 import { useMemo, useState } from "react";
 import type { Company, Consortium, Installment, Loan } from "../data/mockData";
 import { formatCurrency, formatDate } from "../utils/formatters";
+import type { MutationResult, UpsertInstallmentInput } from "../hooks/useSupabaseData";
 
 const cardClass = "rounded-2xl border border-logica-purple/20 bg-white/80 p-4 shadow-md backdrop-blur";
 const inputClass =
@@ -13,6 +14,7 @@ type InstallmentsViewProps = {
   installments: Installment[];
   selectedCompany: string | "all";
   onSelectCompany: (company: string | "all") => void;
+  onSaveInstallment: (input: UpsertInstallmentInput) => Promise<MutationResult<Installment>>;
 };
 
 type StatusFilter = "todas" | Installment["status"];
@@ -23,6 +25,8 @@ type ContractMaps = {
   loans: Map<string, Loan>;
   consortiums: Map<string, Consortium>;
 };
+
+type FeedbackState = { type: "success" | "error"; message: string } | null;
 
 const buildContractMaps = (companies: Company[], loans: Loan[], consortiums: Consortium[]): ContractMaps => {
   const companiesMap = new Map<string, Company>();
@@ -48,12 +52,24 @@ export function InstallmentsView({
   consortiums,
   installments,
   selectedCompany,
-  onSelectCompany
+  onSelectCompany,
+  onSaveInstallment
 }: InstallmentsViewProps) {
   const [statusFilter, setStatusFilter] = useState<StatusFilter>("todas");
   const [dateRange, setDateRange] = useState<DateRange>({});
   const [contractFilter, setContractFilter] = useState<ContractFilter>("all");
   const [contractTypeFilter, setContractTypeFilter] = useState<"todos" | "loan" | "consortium">("todos");
+  const [editingInstallment, setEditingInstallment] = useState<Installment | null>(null);
+  const [editForm, setEditForm] = useState<{ date: string; value: string; status: Installment["status"]; interest: string }>(
+    {
+      date: "",
+      value: "",
+      status: "pendente",
+      interest: ""
+    }
+  );
+  const [editFeedback, setEditFeedback] = useState<FeedbackState>(null);
+  const [isSavingEdit, setIsSavingEdit] = useState(false);
 
   const maps = useMemo(() => buildContractMaps(companies, loans, consortiums), [companies, loans, consortiums]);
 
@@ -116,6 +132,43 @@ export function InstallmentsView({
     setDateRange({});
     setContractFilter("all");
     setContractTypeFilter("todos");
+  };
+
+  const startEditing = (installment: Installment) => {
+    setEditingInstallment(installment);
+    setEditForm({
+      date: installment.date,
+      value: installment.value.toString(),
+      status: installment.status,
+      interest: installment.interest.toString()
+    });
+    setEditFeedback(null);
+  };
+
+  const handleSaveEdit = async () => {
+    if (!editingInstallment) return;
+    setIsSavingEdit(true);
+    setEditFeedback(null);
+
+    const payload: UpsertInstallmentInput = {
+      ...editingInstallment,
+      date: editForm.date,
+      value: Number(editForm.value) || 0,
+      status: editForm.status,
+      interest: Number(editForm.interest) || 0
+    };
+
+    const result = await onSaveInstallment(payload);
+
+    if (!result.success) {
+      setEditFeedback({ type: "error", message: result.error });
+      setIsSavingEdit(false);
+      return;
+    }
+
+    setEditFeedback({ type: "success", message: "Parcela atualizada com sucesso." });
+    setEditingInstallment(result.data);
+    setIsSavingEdit(false);
   };
 
   return (
@@ -249,6 +302,7 @@ export function InstallmentsView({
               <th className="px-3 py-2 text-left font-semibold">Valor</th>
               <th className="px-3 py-2 text-left font-semibold">Juros</th>
               <th className="px-3 py-2 text-left font-semibold">Status</th>
+              <th className="px-3 py-2 text-left font-semibold">Editar</th>
             </tr>
           </thead>
           <tbody className="divide-y divide-logica-lilac/20">
@@ -285,12 +339,119 @@ export function InstallmentsView({
                       {installment.status}
                     </span>
                   </td>
+                  <td className="px-3 py-2 text-right">
+                    <button
+                      type="button"
+                      onClick={() => startEditing(installment)}
+                      className="rounded-full border border-logica-purple px-3 py-1 text-xs font-semibold text-logica-purple transition hover:bg-logica-purple hover:text-white"
+                    >
+                      Editar
+                    </button>
+                  </td>
                 </tr>
               );
             })}
           </tbody>
         </table>
       </section>
+
+      {editingInstallment && (
+        <section className="rounded-2xl border border-logica-purple/20 bg-white/90 p-6 shadow-lg">
+          <div className="flex flex-wrap items-start justify-between gap-3">
+            <div>
+              <h3 className="text-lg font-semibold text-logica-purple">Editar parcela #{editingInstallment.sequence}</h3>
+              <p className="text-xs text-logica-lilac">
+                Somente edição está habilitada para parcelas — exclusão foi desabilitada.
+              </p>
+            </div>
+            <button
+              type="button"
+              className="rounded-full border border-logica-lilac px-3 py-1 text-xs font-semibold text-logica-purple hover:border-logica-purple"
+              onClick={() => setEditingInstallment(null)}
+            >
+              Fechar
+            </button>
+          </div>
+
+          {editFeedback && (
+            <div
+              className={`mt-4 rounded-xl border px-4 py-3 text-sm ${
+                editFeedback.type === "success"
+                  ? "border-emerald-200 bg-emerald-50 text-emerald-700"
+                  : "border-red-200 bg-red-50 text-red-700"
+              }`}
+            >
+              {editFeedback.message}
+            </div>
+          )}
+
+          <div className="mt-4 grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
+            <label className="text-xs font-semibold text-logica-purple">
+              Vencimento
+              <input
+                type="date"
+                value={editForm.date}
+                onChange={(event) => setEditForm((prev) => ({ ...prev, date: event.target.value }))}
+                className={`mt-1 ${inputClass}`}
+              />
+            </label>
+            <label className="text-xs font-semibold text-logica-purple">
+              Valor
+              <input
+                type="number"
+                min={0}
+                step="0.01"
+                value={editForm.value}
+                onChange={(event) => setEditForm((prev) => ({ ...prev, value: event.target.value }))}
+                className={`mt-1 ${inputClass}`}
+              />
+            </label>
+            <label className="text-xs font-semibold text-logica-purple">
+              Juros
+              <input
+                type="number"
+                min={0}
+                step="0.01"
+                value={editForm.interest}
+                onChange={(event) => setEditForm((prev) => ({ ...prev, interest: event.target.value }))}
+                className={`mt-1 ${inputClass}`}
+              />
+            </label>
+            <label className="text-xs font-semibold text-logica-purple">
+              Status
+              <select
+                value={editForm.status}
+                onChange={(event) =>
+                  setEditForm((prev) => ({ ...prev, status: event.target.value as Installment["status"] }))
+                }
+                className={`mt-1 ${inputClass}`}
+              >
+                <option value="pendente">Pendente</option>
+                <option value="paga">Paga</option>
+                <option value="vencida">Vencida</option>
+              </select>
+            </label>
+          </div>
+
+          <div className="mt-4 flex flex-wrap gap-2">
+            <button
+              type="button"
+              onClick={handleSaveEdit}
+              disabled={isSavingEdit}
+              className="rounded-full bg-logica-purple px-4 py-2 text-sm font-semibold text-white shadow transition hover:bg-logica-deep-purple disabled:opacity-60"
+            >
+              {isSavingEdit ? "Salvando..." : "Salvar alterações"}
+            </button>
+            <button
+              type="button"
+              onClick={() => setEditingInstallment(null)}
+              className="rounded-full border border-logica-lilac px-4 py-2 text-sm font-semibold text-logica-purple hover:border-logica-purple"
+            >
+              Cancelar
+            </button>
+          </div>
+        </section>
+      )}
     </div>
   );
 }
