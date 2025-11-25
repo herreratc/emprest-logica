@@ -96,6 +96,20 @@ export const companies: Company[] = [
     nickname: "Transporte A.",
     cnpj: "45.678.901/0001-23",
     address: "Rod. BR-050, Km 123 - Uberaba/MG"
+  },
+  {
+    id: "empresa-lojinha-feliz",
+    name: "Lojinha Feliz",
+    nickname: "Lojinha Feliz",
+    cnpj: "11.222.333/0001-44",
+    address: "Rua Principal, 200 - Belo Horizonte/MG"
+  },
+  {
+    id: "empresa-distribuidora-logica-zn",
+    name: "Distribuidora Lógica ZN",
+    nickname: "Lógica ZN",
+    cnpj: "55.666.777/0001-88",
+    address: "Zona Norte - São Paulo/SP"
   }
 ];
 

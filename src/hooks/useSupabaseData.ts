@@ -814,6 +814,16 @@ export function useSupabaseData(): SupabaseDataState {
         return { success: true, data: null };
       }
 
+      const { error: installmentError } = await supabase
+        .from("installments")
+        .delete()
+        .eq("contract_type", "loan")
+        .eq("contract_id", loanId);
+
+      if (installmentError) {
+        return { success: false, error: installmentError.message };
+      }
+
       const { error } = await supabase.from("loans").delete().eq("id", loanId);
 
       if (error) {

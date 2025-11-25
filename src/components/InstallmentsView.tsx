@@ -1,16 +1,10 @@
-import { useCallback, useMemo, useState } from "react";
+import { useMemo, useState } from "react";
 import type { Company, Consortium, Installment, Loan } from "../data/mockData";
 import { formatCurrency, formatDate } from "../utils/formatters";
-import type { MutationResult } from "../hooks/useSupabaseData";
 
 const cardClass = "rounded-2xl border border-logica-purple/20 bg-white/80 p-4 shadow-md backdrop-blur";
 const inputClass =
   "w-full rounded-lg border border-logica-lilac/40 bg-white px-3 py-1.5 text-xs text-logica-purple focus:border-logica-purple focus:outline-none";
-
-const feedbackClass = (type: "success" | "error") =>
-  `rounded-xl border px-4 py-2 text-sm ${
-    type === "success" ? "border-green-200 bg-green-50 text-green-700" : "border-red-200 bg-red-50 text-red-700"
-  }`;
 
 type InstallmentsViewProps = {
   companies: Company[];
@@ -19,14 +13,11 @@ type InstallmentsViewProps = {
   installments: Installment[];
   selectedCompany: string | "all";
   onSelectCompany: (company: string | "all") => void;
-  onDeleteInstallment: (installmentId: string) => Promise<MutationResult<null>>;
 };
 
 type StatusFilter = "todas" | Installment["status"];
 type ContractFilter = "all" | `${"loan" | "consortium"}:${string}`;
 type DateRange = { start?: string; end?: string };
-type FeedbackState = { type: "success" | "error"; message: string } | null;
-
 type ContractMaps = {
   companies: Map<string, Company>;
   loans: Map<string, Loan>;
@@ -57,15 +48,12 @@ export function InstallmentsView({
   consortiums,
   installments,
   selectedCompany,
-  onSelectCompany,
-  onDeleteInstallment
+  onSelectCompany
 }: InstallmentsViewProps) {
   const [statusFilter, setStatusFilter] = useState<StatusFilter>("todas");
   const [dateRange, setDateRange] = useState<DateRange>({});
   const [contractFilter, setContractFilter] = useState<ContractFilter>("all");
   const [contractTypeFilter, setContractTypeFilter] = useState<"todos" | "loan" | "consortium">("todos");
-  const [tableFeedback, setTableFeedback] = useState<FeedbackState>(null);
-  const [deletingId, setDeletingId] = useState<string | null>(null);
 
   const maps = useMemo(() => buildContractMaps(companies, loans, consortiums), [companies, loans, consortiums]);
 
@@ -129,26 +117,6 @@ export function InstallmentsView({
     setContractFilter("all");
     setContractTypeFilter("todos");
   };
-
-  const handleDeleteInstallment = useCallback(
-    async (installmentId: string) => {
-      setTableFeedback(null);
-      setDeletingId(installmentId);
-      const result = await onDeleteInstallment(installmentId);
-      setDeletingId(null);
-
-      if (!result.success) {
-        setTableFeedback({
-          type: "error",
-          message: result.error ?? "Não foi possível remover a parcela selecionada."
-        });
-        return;
-      }
-
-      setTableFeedback({ type: "success", message: "Parcela removida com sucesso." });
-    },
-    [onDeleteInstallment]
-  );
 
   return (
     <div className="space-y-6">
@@ -269,10 +237,7 @@ export function InstallmentsView({
       </section>
 
       <section className="overflow-x-auto rounded-2xl border border-logica-purple/10 bg-white/90 p-6 shadow-lg">
-        <div className="flex items-center justify-between gap-4">
-          <h2 className="text-lg font-semibold text-logica-purple">Parcelas filtradas</h2>
-          {tableFeedback && <div className={feedbackClass(tableFeedback.type)}>{tableFeedback.message}</div>}
-        </div>
+        <h2 className="text-lg font-semibold text-logica-purple">Parcelas filtradas</h2>
         <table className="mt-4 min-w-full divide-y divide-logica-lilac/30 text-sm text-logica-purple">
           <thead className="bg-logica-light-lilac/60">
             <tr>
@@ -284,7 +249,6 @@ export function InstallmentsView({
               <th className="px-3 py-2 text-left font-semibold">Valor</th>
               <th className="px-3 py-2 text-left font-semibold">Juros</th>
               <th className="px-3 py-2 text-left font-semibold">Status</th>
-              <th className="px-3 py-2 text-right font-semibold">Ações</th>
             </tr>
           </thead>
           <tbody className="divide-y divide-logica-lilac/20">
@@ -320,16 +284,6 @@ export function InstallmentsView({
                     >
                       {installment.status}
                     </span>
-                  </td>
-                  <td className="px-3 py-2 text-right">
-                    <button
-                      type="button"
-                      onClick={() => void handleDeleteInstallment(installment.id)}
-                      className="rounded-full border border-red-200 px-3 py-1 text-xs font-semibold text-red-600 transition hover:bg-red-50 disabled:opacity-60"
-                      disabled={deletingId === installment.id}
-                    >
-                      {deletingId === installment.id ? "Removendo..." : "Excluir"}
-                    </button>
                   </td>
                 </tr>
               );
