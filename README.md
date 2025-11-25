@@ -35,6 +35,12 @@ Inclui autenticação via Supabase, dashboards interativos e utilitários para s
    # ou cole o conteúdo no editor SQL do painel e execute
    ```
 
+   - Para zerar todos os contratos e parcelas mantendo somente as empresas, rode `supabase/reset_preserve_companies.sql` no SQL Editor ou via CLI:
+
+     ```bash
+     supabase db push --file supabase/reset_preserve_companies.sql
+     ```
+
 4. Execute o servidor de desenvolvimento:
 
    ```bash
