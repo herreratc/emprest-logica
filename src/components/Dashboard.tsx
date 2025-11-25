@@ -181,14 +181,26 @@ export function Dashboard({
     return highest;
   }, null);
 
-  const monthlyCashflow = useMemo(() => {
-    const startOfMonth = new Date();
-    startOfMonth.setDate(1);
-    startOfMonth.setHours(0, 0, 0, 0);
+  const firstScheduledMonth = useMemo(() => {
+    if (upcomingInstallments.length === 0) return null;
+    const ordered = [...upcomingInstallments].sort(
+      (a, b) => new Date(a.date).getTime() - new Date(b.date).getTime()
+    );
+    return new Date(ordered[0].date);
+  }, [upcomingInstallments]);
 
+  const monthlyStart = useMemo(() => {
+    const reference = firstScheduledMonth ?? new Date();
+    const normalized = new Date(reference);
+    normalized.setDate(1);
+    normalized.setHours(0, 0, 0, 0);
+    return normalized;
+  }, [firstScheduledMonth]);
+
+  const monthlyCashflow = useMemo(() => {
     return Array.from({ length: 12 }, (_, index) => {
-      const monthDate = new Date(startOfMonth);
-      monthDate.setMonth(startOfMonth.getMonth() + index);
+      const monthDate = new Date(monthlyStart);
+      monthDate.setMonth(monthlyStart.getMonth() + index);
       const nextMonth = new Date(monthDate);
       nextMonth.setMonth(monthDate.getMonth() + 1);
 
@@ -210,7 +222,7 @@ export function Dashboard({
         value
       };
     });
-  }, [activeInstallments]);
+  }, [activeInstallments, monthlyStart]);
 
   const maxMonthlyCashflow = Math.max(1, ...monthlyCashflow.map((month) => month.value));
   const loanShare = totalDebt ? Math.round((totalLoanValue / totalDebt) * 100) : 0;
@@ -246,23 +258,54 @@ export function Dashboard({
     ? "Todas as empresas"
     : companies.find((company) => company.id === selectedCompany)?.name ?? "Empresa";
 
+  const scheduleWindowStart = useMemo(() => {
+    const start = new Date();
+    start.setDate(start.getDate() - 30);
+    start.setHours(0, 0, 0, 0);
+    return start;
+  }, []);
+
+  const scheduleWindowEnd = useMemo(() => {
+    const end = new Date();
+    end.setDate(end.getDate() + 30);
+    end.setHours(23, 59, 59, 999);
+    return end;
+  }, []);
+
+  const periodFilteredInstallments = useMemo(() => {
+    return upcomingInstallments.filter((installment) => {
+      const installmentDate = new Date(installment.date);
+      return installmentDate >= scheduleWindowStart && installmentDate <= scheduleWindowEnd;
+    });
+  }, [upcomingInstallments, scheduleWindowEnd, scheduleWindowStart]);
+
+  const scheduleSource = periodFilteredInstallments.length > 0 ? periodFilteredInstallments : upcomingInstallments;
+
   const nextInstallments = useMemo(() => {
-    return [...upcomingInstallments]
+    return [...scheduleSource]
       .sort((a, b) => new Date(a.date).getTime() - new Date(b.date).getTime())
       .slice(0, 5);
-  }, [upcomingInstallments]);
+  }, [scheduleSource]);
 
   const schedulePeriodRange = useMemo(() => {
-    if (upcomingInstallments.length === 0) return null;
-    const ordered = [...upcomingInstallments].sort(
+    if (scheduleSource.length === 0) return null;
+
+    const startLabel = scheduleDateWithYearFormatter.format(scheduleWindowStart).replace(".", "");
+    const endLabel = scheduleDateWithYearFormatter.format(scheduleWindowEnd).replace(".", "");
+
+    if (periodFilteredInstallments.length > 0) {
+      return `Últimos 30 dias (${startLabel} — ${endLabel})`;
+    }
+
+    const ordered = [...scheduleSource].sort(
       (a, b) => new Date(a.date).getTime() - new Date(b.date).getTime()
     );
     const firstDate = scheduleDateWithYearFormatter.format(new Date(ordered[0].date)).replace(".", "");
     const lastDate = scheduleDateWithYearFormatter
       .format(new Date(ordered[ordered.length - 1].date))
       .replace(".", "");
-    return `${firstDate} — ${lastDate}`;
-  }, [upcomingInstallments]);
+    return `Próximos lançamentos (${firstDate} — ${lastDate})`;
+  }, [periodFilteredInstallments.length, scheduleSource, scheduleWindowEnd, scheduleWindowStart]);
 
   const executiveHighlights = [
     {
@@ -371,13 +414,14 @@ export function Dashboard({
                   <span className="text-logica-purple">{badgeIcons.bell}</span> {next7DaysCount} vencimentos em 7 dias
                 </span>
               )}
-            {overdueInstallments.length > 0 && (
-              <span className="flex items-center gap-2 rounded-full bg-white/80 px-3 py-1 font-semibold shadow-inner text-rose-600">
-                <span className="text-rose-500">{badgeIcons.alert}</span> {overdueInstallments.length} em atraso
-              </span>
-            )}
+              {overdueInstallments.length > 0 && (
+                <span className="flex items-center gap-2 rounded-full bg-white/80 px-3 py-1 font-semibold shadow-inner text-rose-600">
+                  <span className="text-rose-500">{badgeIcons.alert}</span> {overdueInstallments.length} em atraso
+                </span>
+              )}
+            </div>
           </div>
-        </div>
+
           <div className="flex flex-wrap items-center gap-3">
             <div className="flex items-center gap-3 rounded-2xl border border-logica-light-lilac bg-white/90 px-4 py-3 text-sm font-semibold text-logica-purple shadow">
               <div>
@@ -428,7 +472,7 @@ export function Dashboard({
                 {summaryIcons[card.icon]}
               </span>
             </div>
-            <p className="mt-2 text-3xl font-bold text-logica-purple">{card.value}</p>
+            <p className="mt-2 text-3xl font-bold leading-tight text-logica-purple">{card.value}</p>
             <p className="text-xs text-logica-lilac">{card.description}</p>
             {card.progress !== undefined && (
               <div className="mt-3 h-2 w-full rounded-full bg-logica-light-lilac/70">
@@ -442,8 +486,8 @@ export function Dashboard({
         ))}
       </section>
 
-      <section className="grid gap-4 xl:grid-cols-3">
-        <div className={`${cardBaseClass} xl:col-span-2 border-logica-purple/20 shadow-logica-purple/10`}>
+      <section>
+        <div className={`${cardBaseClass} border-logica-purple/20 shadow-logica-purple/10`}>
           <div className="mb-6 flex flex-wrap items-center justify-between gap-2">
             <div>
               <h2 className="text-lg font-semibold text-logica-purple">Fluxo de parcelas</h2>
@@ -472,17 +516,17 @@ export function Dashboard({
             <div className="relative ml-16 flex h-56 items-end gap-3 overflow-visible" role="list">
               {monthlyCashflow.map((month) => {
                 const height = Math.round((month.value / maxMonthlyCashflow) * 100);
-                const barHeight = Math.max(height, month.value > 0 ? 8 : 4);
+                const barHeight = Math.max(height, month.value > 0 ? 8 : 6);
                 const isMax = month.value === maxMonthlyCashflow;
                 return (
                   <div key={month.key} className="flex-1" role="listitem" aria-label={`${month.label} ${formatCurrency(month.value)}`}>
                     <div className="group flex h-full flex-col items-center gap-3">
-                      <div className="flex h-full w-full items-end overflow-visible rounded-2xl bg-gradient-to-b from-white/60 via-logica-light-lilac/40 to-logica-light-lilac/70 p-1">
+                      <div className="flex h-full w-full items-end overflow-visible rounded-2xl bg-gradient-to-b from-white via-logica-light-lilac/50 to-logica-light-lilac/80 p-1">
                         <div
                           className={`relative w-full rounded-xl bg-gradient-to-t from-logica-purple to-logica-rose shadow-inner transition-all group-hover:brightness-110 ${isMax ? "ring-2 ring-white/70" : ""}`}
                           style={{ height: `${barHeight}%` }}
                         >
-                          <span className="absolute inset-x-1 top-1 rounded-full bg-white/90 px-1 text-[10px] font-semibold text-logica-purple">
+                          <span className="absolute inset-x-1 top-1 rounded-full bg-white/95 px-1 text-[10px] font-semibold leading-tight text-logica-purple">
                             {formatCurrency(month.value)}
                           </span>
                         </div>
@@ -499,47 +543,11 @@ export function Dashboard({
                 </span>
               ))}
             </div>
-          </div>
-        </div>
-        <div className={`${cardBaseClass} flex flex-col gap-6 border-logica-rose/20 shadow-logica-rose/10`}>
-          <div>
-            <h2 className="text-lg font-semibold text-logica-purple">Composição da carteira</h2>
-            <p className="text-xs text-logica-lilac">Distribuição entre empréstimos e consórcios</p>
-          </div>
-          <div className="flex flex-col items-center gap-5">
-            <div className="relative h-48 w-48">
-              <div
-                className="absolute inset-0 rounded-full border border-white/60"
-                style={{
-                  background: `conic-gradient(#b42a98 ${loanShare}%, #61105c ${loanShare}% 100%)`
-                }}
-              >
-                <span className="sr-only">{loanShare}% em empréstimos</span>
+            {maxMonthlyCashflow <= 1 && (
+              <div className="absolute inset-0 flex items-center justify-center text-[11px] font-semibold text-logica-lilac">
+                Sem lançamentos no período selecionado
               </div>
-              <div className="absolute inset-4 rounded-full bg-white/70" />
-              <div className="absolute inset-8 flex flex-col items-center justify-center rounded-full bg-white/90 text-center">
-                <p className="text-3xl font-bold text-logica-purple">{loanShare}%</p>
-                <p className="text-xs text-logica-lilac">em empréstimos</p>
-                <p className="text-xs text-logica-lilac">{consortiumShare}% em consórcios</p>
-              </div>
-            </div>
-            <div className="w-full space-y-3 text-sm">
-              {compositionBreakdown.map((item) => (
-                <div key={item.label} className="flex items-center gap-3 rounded-2xl bg-white/70 p-3 shadow-inner">
-                  <div className={`h-10 w-10 rounded-xl bg-gradient-to-br ${item.gradient}`}>
-                    <span className="sr-only">{item.label}</span>
-                  </div>
-                  <div className="flex-1">
-                    <p className="text-xs font-semibold uppercase tracking-wide text-logica-lilac">{item.label}</p>
-                    <p className={`text-base font-semibold ${item.accent}`}>{formatCurrency(item.value)}</p>
-                  </div>
-                  <div className="text-right">
-                    <p className="text-xs font-semibold text-logica-lilac">Participação</p>
-                    <p className="text-base font-bold text-logica-purple">{item.share}%</p>
-                  </div>
-                </div>
-              ))}
-            </div>
+            )}
           </div>
         </div>
       </section>
@@ -552,13 +560,18 @@ export function Dashboard({
               <p className="text-xs text-logica-lilac">Próximas parcelas monitoradas</p>
               {schedulePeriodRange && (
                 <p className="text-[11px] font-semibold text-logica-lilac/90">
-                  Período considerado: {schedulePeriodRange}
+                  Período utilizado nos dados: {schedulePeriodRange}
                 </p>
               )}
             </div>
-            <span className="rounded-full bg-logica-light-lilac/60 px-3 py-1 text-xs font-semibold text-logica-purple">
-              Exibindo {nextInstallments.length} de {upcomingInstallments.length} lançamentos futuros
-            </span>
+            <div className="flex flex-wrap items-center gap-2 text-xs font-semibold text-logica-purple">
+              <span className="rounded-full bg-logica-light-lilac/60 px-3 py-1 shadow-inner">
+                Exibindo {nextInstallments.length} de {scheduleSource.length} lançamentos
+              </span>
+              <span className="rounded-full bg-white/80 px-3 py-1 shadow-inner">
+                {periodFilteredInstallments.length > 0 ? "Últimos 30 dias" : "Período padrão"}
+              </span>
+            </div>
           </div>
           <div className="overflow-hidden rounded-2xl border border-logica-light-lilac/80">
             <table className="w-full text-sm">
@@ -575,7 +588,7 @@ export function Dashboard({
                 {nextInstallments.length === 0 && (
                   <tr>
                     <td colSpan={5} className="px-4 py-6 text-center text-sm text-logica-lilac">
-                      Nenhuma parcela futura cadastrada para este período.
+                      Nenhuma parcela cadastrada para o período selecionado.
                     </td>
                   </tr>
                 )}
@@ -598,7 +611,7 @@ export function Dashboard({
                       </td>
                       <td className="px-4 py-3 text-logica-purple">{contractLabel}</td>
                       <td className="px-4 py-3 text-logica-lilac">{contractOrigin}</td>
-                      <td className="px-4 py-3 text-right font-semibold text-logica-purple">
+                      <td className="px-4 py-3 text-right font-semibold leading-tight text-logica-purple">
                         {formatCurrency(installment.value)}
                       </td>
                       <td className="px-4 py-3 text-right">
@@ -613,16 +626,65 @@ export function Dashboard({
             </table>
           </div>
         </div>
-        <div className={`${cardBaseClass} flex flex-col gap-5 border-logica-rose/20 shadow-logica-rose/10`}>
+        <div className={`${cardBaseClass} flex flex-col gap-6 border-logica-rose/20 shadow-logica-rose/10`}>
           <div>
-            <h2 className="text-lg font-semibold text-logica-purple">Resumo executivo</h2>
-            <p className="text-xs text-logica-lilac">Indicadores-chave da carteira</p>
+            <h2 className="text-lg font-semibold text-logica-purple">Composição da carteira</h2>
+            <p className="text-xs text-logica-lilac">Distribuição entre empréstimos e consórcios</p>
           </div>
-          <ul className="space-y-4">
+          <div className="flex flex-col items-center gap-5">
+            <div className="relative h-48 w-48">
+              <div
+                className="absolute inset-0 rounded-full border border-white/60"
+                style={{
+                  background: `conic-gradient(#b42a98 ${loanShare}%, #61105c ${loanShare}% 100%)`
+                }}
+              >
+                <span className="sr-only">{loanShare}% em empréstimos</span>
+              </div>
+              <div className="absolute inset-4 rounded-full bg-white/70" />
+              <div className="absolute inset-8 flex flex-col items-center justify-center rounded-full bg-white/90 text-center">
+                <p className="text-3xl font-bold leading-tight text-logica-purple">{loanShare}%</p>
+                <p className="text-xs text-logica-lilac">em empréstimos</p>
+                <p className="text-xs text-logica-lilac">{consortiumShare}% em consórcios</p>
+              </div>
+            </div>
+            <div className="w-full space-y-3 text-sm">
+              {compositionBreakdown.map((item) => (
+                <div key={item.label} className="flex items-center gap-3 rounded-2xl bg-white/70 p-3 shadow-inner">
+                  <div className={`h-10 w-10 rounded-xl bg-gradient-to-br ${item.gradient}`}>
+                    <span className="sr-only">{item.label}</span>
+                  </div>
+                  <div className="flex-1">
+                    <p className="text-xs font-semibold uppercase tracking-wide text-logica-lilac">{item.label}</p>
+                    <p className={`text-base font-semibold ${item.accent}`}>{formatCurrency(item.value)}</p>
+                  </div>
+                  <div className="text-right">
+                    <p className="text-xs font-semibold text-logica-lilac">Participação</p>
+                    <p className="text-base font-bold leading-tight text-logica-purple">{item.share}%</p>
+                  </div>
+                </div>
+              ))}
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <section className="grid gap-4 lg:grid-cols-3">
+        <div className={`${cardBaseClass} flex flex-col gap-5 border-logica-rose/20 shadow-logica-rose/10 lg:col-span-3`}>
+          <div className="flex flex-wrap items-center justify-between gap-2">
+            <div>
+              <h2 className="text-lg font-semibold text-logica-purple">Resumo executivo</h2>
+              <p className="text-xs text-logica-lilac">Indicadores-chave da carteira</p>
+            </div>
+            <span className="rounded-full bg-logica-light-lilac/70 px-3 py-1 text-[11px] font-semibold text-logica-purple shadow-inner">
+              {contractCount} contratos em acompanhamento
+            </span>
+          </div>
+          <ul className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
             {executiveHighlights.map((item) => (
               <li key={item.label} className="rounded-2xl bg-logica-light-lilac/60 p-4">
                 <p className="text-xs font-semibold uppercase tracking-wide text-logica-lilac">{item.label}</p>
-                <p className="mt-1 text-2xl font-bold text-logica-purple">{item.value}</p>
+                <p className="mt-1 text-2xl font-bold leading-tight text-logica-purple">{item.value}</p>
                 <p className="text-xs text-logica-lilac">{item.description}</p>
               </li>
             ))}

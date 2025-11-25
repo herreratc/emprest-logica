@@ -6,6 +6,7 @@ const menuItems = [
   { key: "loans", label: "Empréstimos" },
   { key: "consortiums", label: "Consórcios" },
   { key: "installments", label: "Parcelas" },
+  { key: "settlements", label: "Quitações" },
   { key: "users", label: "Usuários" },
   { key: "simulation", label: "Simulação" }
 ] as const;
