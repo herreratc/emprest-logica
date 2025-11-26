@@ -237,6 +237,8 @@ export function Dashboard({
     };
   });
 
+  const hasCashflow = monthlyCashflow.some((month) => month.value > 0);
+
   const compositionBreakdown = [
     {
       label: "Empréstimos",
@@ -472,7 +474,9 @@ export function Dashboard({
                 {summaryIcons[card.icon]}
               </span>
             </div>
-            <p className="mt-2 text-3xl font-bold leading-tight text-logica-purple">{card.value}</p>
+            <p className="mt-2 break-words text-2xl font-bold leading-snug text-logica-purple sm:text-3xl">
+              {card.value}
+            </p>
             <p className="text-xs text-logica-lilac">{card.description}</p>
             {card.progress !== undefined && (
               <div className="mt-3 h-2 w-full rounded-full bg-logica-light-lilac/70">
@@ -516,14 +520,14 @@ export function Dashboard({
             <div className="relative ml-16 flex h-56 items-end gap-3 overflow-visible" role="list">
               {monthlyCashflow.map((month) => {
                 const height = Math.round((month.value / maxMonthlyCashflow) * 100);
-                const barHeight = Math.max(height, month.value > 0 ? 8 : 6);
+                const barHeight = Math.max(height, month.value > 0 ? 14 : 6);
                 const isMax = month.value === maxMonthlyCashflow;
                 return (
                   <div key={month.key} className="flex-1" role="listitem" aria-label={`${month.label} ${formatCurrency(month.value)}`}>
                     <div className="group flex h-full flex-col items-center gap-3">
                       <div className="flex h-full w-full items-end overflow-visible rounded-2xl bg-gradient-to-b from-white via-logica-light-lilac/50 to-logica-light-lilac/80 p-1">
                         <div
-                          className={`relative w-full rounded-xl bg-gradient-to-t from-logica-purple to-logica-rose shadow-inner transition-all group-hover:brightness-110 ${isMax ? "ring-2 ring-white/70" : ""}`}
+                          className={`relative w-full rounded-xl bg-gradient-to-t from-logica-purple/90 via-logica-purple to-logica-rose/90 shadow-lg shadow-logica-purple/20 transition-all group-hover:brightness-110 ${isMax ? "ring-2 ring-white/70" : "ring-1 ring-white/60"}`}
                           style={{ height: `${barHeight}%` }}
                         >
                           <span className="absolute inset-x-1 top-1 rounded-full bg-white/95 px-1 text-[10px] font-semibold leading-tight text-logica-purple">
@@ -543,7 +547,7 @@ export function Dashboard({
                 </span>
               ))}
             </div>
-            {maxMonthlyCashflow <= 1 && (
+            {!hasCashflow && (
               <div className="absolute inset-0 flex items-center justify-center text-[11px] font-semibold text-logica-lilac">
                 Sem lançamentos no período selecionado
               </div>
