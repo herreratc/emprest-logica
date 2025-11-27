@@ -464,9 +464,6 @@ export function Dashboard({
               <span>Visão consolidada</span>
             </div>
             <h1 className="text-3xl font-extrabold uppercase tracking-tight text-logica-purple">Dashboard</h1>
-            <p className="text-sm text-logica-lilac">
-              Confiança, sofisticação e clareza para monitorar empréstimos e consórcios em um painel SaaS-level.
-            </p>
             <div className="flex flex-wrap gap-2 text-xs text-logica-purple">
               <span className="rounded-full bg-logica-light-lilac/80 px-3 py-1 font-semibold shadow-inner ring-1 ring-white/70">
                 {companyName}

@@ -192,11 +192,11 @@ export function CompaniesView({
         <h2 className="text-lg font-semibold text-logica-purple">
           {editing ? `Editar ${editing.name}` : "Cadastrar nova empresa"}
         </h2>
-        <p className="text-sm text-logica-lilac">
-          {isUsingSupabase
-            ? "As informações são persistidas diretamente no banco Supabase configurado."
-            : "Sem Supabase configurado, as alterações ficam apenas em modo demonstração."}
-        </p>
+        {!isUsingSupabase && (
+          <p className="text-sm text-logica-lilac">
+            Sem Supabase configurado, as alterações ficam apenas em modo demonstração.
+          </p>
+        )}
         {feedback && (
           <div
             className={clsx(
