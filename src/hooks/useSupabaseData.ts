@@ -543,17 +543,30 @@ export function useSupabaseData(): SupabaseDataState {
       const consortiumSource = overrides?.consortiums
         ? sortConsortiums(overrides.consortiums)
         : sortConsortiums(consortiumsRef.current);
-      const { loans: reconciledLoans, consortiums: reconciledConsortiums } = reconcileContractsWithInstallments(
-        loanSource,
-        consortiumSource,
-        sortedInstallments
-      );
+      const reconciliation = reconcileContractsWithInstallments(loanSource, consortiumSource, sortedInstallments);
       setInstallments(sortedInstallments);
-      setLoans(reconciledLoans);
-      setConsortiums(reconciledConsortiums);
+      setLoans(reconciliation.loans);
+      setConsortiums(reconciliation.consortiums);
+      return { ...reconciliation, sortedInstallments };
     },
     []
   );
+
+  const persistContractUpdates = async (loanUpdates: Loan[], consortiumUpdates: Consortium[]) => {
+    if (!hasClient || !supabase) {
+      return;
+    }
+
+    if (loanUpdates.length > 0) {
+      await supabase.from("loans").upsert(loanUpdates.map((loan) => mapLoanToDb({ ...loan })), { onConflict: "id" });
+    }
+
+    if (consortiumUpdates.length > 0) {
+      await supabase
+        .from("consortiums")
+        .upsert(consortiumUpdates.map((consortium) => mapConsortiumToDb({ ...consortium })), { onConflict: "id" });
+    }
+  };
 
   const fetchData = useCallback(async () => {
     if (!hasClient || !supabase) {
@@ -971,7 +984,8 @@ export function useSupabaseData(): SupabaseDataState {
       const remaining = installmentsRef.current.filter(
         (installment) => installment.id !== syncedInstallment.id
       );
-      applyInstallmentsState([...remaining, syncedInstallment]);
+      const reconciliation = applyInstallmentsState([...remaining, syncedInstallment]);
+      await persistContractUpdates(reconciliation?.loanUpdates ?? [], reconciliation?.consortiumUpdates ?? []);
       return { success: true, data: syncedInstallment };
     },
     [applyInstallmentsState]
@@ -981,7 +995,7 @@ export function useSupabaseData(): SupabaseDataState {
     async (installmentId: string): Promise<MutationResult<null>> => {
       const removeFromState = () => {
         const remaining = installmentsRef.current.filter((installment) => installment.id !== installmentId);
-        applyInstallmentsState(remaining);
+        return applyInstallmentsState(remaining);
       };
 
       if (!hasClient || !supabase) {
@@ -995,7 +1009,8 @@ export function useSupabaseData(): SupabaseDataState {
         return { success: false, error: error.message };
       }
 
-      removeFromState();
+      const reconciliation = removeFromState();
+      await persistContractUpdates(reconciliation?.loanUpdates ?? [], reconciliation?.consortiumUpdates ?? []);
       return { success: true, data: null };
     },
     [applyInstallmentsState]
@@ -1010,8 +1025,10 @@ export function useSupabaseData(): SupabaseDataState {
     const referenceDate = getBrazilNow();
     const { normalized, updates } = normalizeInstallmentStatuses(installmentsRef.current, referenceDate);
 
+    let reconciliation: ReturnType<typeof applyInstallmentsState> | undefined;
+
     if (updates.length > 0) {
-      applyInstallmentsState(normalized);
+      reconciliation = applyInstallmentsState(normalized);
     }
 
     if (hasClient && supabase && updates.length > 0) {
@@ -1019,6 +1036,7 @@ export function useSupabaseData(): SupabaseDataState {
         await supabase
           .from("installments")
           .upsert(updates.map((installment) => mapInstallmentToDb({ ...installment })), { onConflict: "id" });
+        await persistContractUpdates(reconciliation?.loanUpdates ?? [], reconciliation?.consortiumUpdates ?? []);
       } catch (err) {
         console.error("Falha ao atualizar status das parcelas automaticamente:", err);
       }
