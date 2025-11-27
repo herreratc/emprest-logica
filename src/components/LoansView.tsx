@@ -173,7 +173,11 @@ export function LoansView({
   const totalLoansCount = filteredLoans.length;
   const totalContractedValue = filteredLoans.reduce((acc, loan) => acc + loan.totalValue, 0);
   const totalPaidValue = filteredLoans.reduce((acc, loan) => acc + loan.amountPaid, 0);
-  const currentDebtValue = filteredLoans.reduce((acc, loan) => acc + loan.amountToPay, 0);
+  const currentDebtValue = filteredLoans.reduce((acc, loan) => {
+    const calculatedPending = loan.totalValue - loan.amountPaid;
+    const pendingAmount = Number.isFinite(loan.amountToPay) ? loan.amountToPay : calculatedPending;
+    return acc + Math.max(pendingAmount, 0);
+  }, 0);
 
   useEffect(() => {
     if (editing) {

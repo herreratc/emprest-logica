@@ -120,7 +120,13 @@ export function ConsortiumsView({
     const outstanding = filteredConsortiums.reduce((acc, item) => acc + item.outstandingBalance, 0);
     const credit = filteredConsortiums.reduce((acc, item) => acc + item.creditToReceive, 0);
     const installmentValue = filteredConsortiums.reduce((acc, item) => acc + item.currentInstallmentValue, 0);
-    return { outstanding, credit, installmentValue };
+    const pending = filteredConsortiums.reduce((acc, item) => {
+      const pendingAmount = Number.isFinite(item.amountToPay)
+        ? item.amountToPay
+        : item.outstandingBalance;
+      return acc + Math.max(pendingAmount, 0);
+    }, 0);
+    return { outstanding, credit, installmentValue, pending };
   }, [filteredConsortiums]);
 
   const categories = useMemo(() => {
@@ -309,7 +315,7 @@ export function ConsortiumsView({
         </div>
         <div className={cardClass}>
           <p className="text-xs font-semibold uppercase text-logica-lilac">Saldo devedor</p>
-          <p className="mt-2 text-2xl font-bold text-logica-rose">{formatCurrency(totals.outstanding)}</p>
+          <p className="mt-2 text-2xl font-bold text-logica-rose">{formatCurrency(totals.pending)}</p>
         </div>
         <div className={cardClass}>
           <p className="text-xs font-semibold uppercase text-logica-lilac">Crédito a receber</p>
