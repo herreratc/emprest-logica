@@ -242,16 +242,6 @@ export function Dashboard({
   const maxMonthlyCashflow = Math.max(1, ...monthlyCashflow.map((month) => month.total));
   const loanShare = totalDebt ? Math.round((contractedLoanValue / totalDebt) * 100) : 0;
   const consortiumShare = 100 - loanShare;
-  const yAxisSteps = 4;
-  const yAxisScale = Array.from({ length: yAxisSteps }, (_, index) => {
-    const value = Math.round((maxMonthlyCashflow / yAxisSteps) * (yAxisSteps - index));
-    return {
-      id: `y-axis-${index}`,
-      value,
-      label: formatCurrency(value)
-    };
-  });
-
   const hasCashflow = monthlyCashflow.some((month) => month.total > 0);
 
   const chartLeft = 12;
@@ -639,14 +629,12 @@ export function Dashboard({
                   </g>
                 );
               })}
-            </svg>
-
-            {!hasCashflow && (
-              <div className="absolute inset-0 flex items-center justify-center rounded-2xl bg-white/70 text-[11px] font-semibold text-logica-lilac">
-                Sem lançamentos no período selecionado
-              </div>
-            )}
-          </div>
+            </div>
+          ) : (
+            <div className="alert alert-light text-[11px] font-semibold text-logica-lilac" role="alert">
+              Sem lançamentos no período selecionado
+            </div>
+          )}
         </div>
       </section>
 
