@@ -37,7 +37,7 @@ export function LoginView() {
           <div className="space-y-4">
             <div className="flex items-center gap-3">
               <div className="rounded-2xl bg-white/90 p-3 shadow-lg shadow-black/10">
-                <img src="/logo.svg" alt="Lógica" className="h-12 w-12" />
+                <img src="/logo.png" alt="Lógica" className="h-12 w-12" />
               </div>
               <div>
                 <p className="text-sm uppercase tracking-[0.2em] text-white/80">Logística financeira</p>
