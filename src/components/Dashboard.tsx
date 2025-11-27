@@ -181,21 +181,21 @@ export function Dashboard({
     return highest;
   }, null);
 
-  const firstScheduledMonth = useMemo(() => {
-    if (upcomingInstallments.length === 0) return null;
-    const ordered = [...upcomingInstallments].sort(
+  const earliestInstallmentMonth = useMemo(() => {
+    if (activeInstallments.length === 0) return null;
+    const ordered = [...activeInstallments].sort(
       (a, b) => new Date(a.date).getTime() - new Date(b.date).getTime()
     );
     return new Date(ordered[0].date);
-  }, [upcomingInstallments]);
+  }, [activeInstallments]);
 
   const monthlyStart = useMemo(() => {
-    const reference = firstScheduledMonth ?? new Date();
+    const reference = earliestInstallmentMonth ?? new Date();
     const normalized = new Date(reference);
     normalized.setDate(1);
     normalized.setHours(0, 0, 0, 0);
     return normalized;
-  }, [firstScheduledMonth]);
+  }, [earliestInstallmentMonth]);
 
   const monthlyCashflow = useMemo(() => {
     return Array.from({ length: 12 }, (_, index) => {
