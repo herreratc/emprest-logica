@@ -163,6 +163,7 @@ export function LoansView({
     return loans.filter((loan) => (statusFilter === "todos" ? true : loan.status === statusFilter));
   }, [loans, statusFilter]);
 
+  const totalLoansCount = filteredLoans.length;
   const totalContractedValue = filteredLoans.reduce((acc, loan) => acc + loan.totalValue, 0);
   const totalPaidValue = filteredLoans.reduce((acc, loan) => acc + loan.amountPaid, 0);
   const currentDebtValue = filteredLoans.reduce((acc, loan) => acc + loan.amountToPay, 0);
@@ -406,8 +407,8 @@ export function LoansView({
       <section className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
         <div className={cardClass}>
           <p className="text-xs font-semibold uppercase text-logica-lilac">Total de empréstimos</p>
-          <p className="mt-2 text-3xl font-bold leading-tight text-logica-purple">{filteredLoans.length}</p>
-          <p className="text-xs text-logica-lilac">Contratos cadastrados</p>
+          <p className="mt-2 text-2xl font-bold leading-tight text-logica-purple">{totalLoansCount.toLocaleString("pt-BR")}</p>
+          <p className="text-xs text-logica-lilac">Quantidade de empréstimos filtrados</p>
         </div>
         <div className={cardClass}>
           <p className="text-xs font-semibold uppercase text-logica-lilac">Valor total contratado</p>
