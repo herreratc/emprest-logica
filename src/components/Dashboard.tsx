@@ -307,10 +307,6 @@ export function Dashboard({
     }
   ];
 
-  const companyName = selectedCompany === "all"
-    ? "Todas as empresas"
-    : companies.find((company) => company.id === selectedCompany)?.name ?? "Empresa";
-
   const scheduleWindowStart = useMemo(() => {
     const start = new Date();
     start.setDate(start.getDate() - 30);
@@ -454,6 +450,8 @@ export function Dashboard({
     }
   ];
 
+  const hasScheduleBadges = next7DaysCount > 0 || overdueInstallments.length > 0;
+
   return (
     <div className="space-y-6">
       <header className="overflow-hidden rounded-3xl border border-white/70 bg-white/80 p-6 shadow-[0_18px_36px_rgba(106,27,154,0.08)] backdrop-blur-sm">
@@ -464,24 +462,20 @@ export function Dashboard({
               <span>Visão consolidada</span>
             </div>
             <h1 className="text-3xl font-extrabold uppercase tracking-tight text-logica-purple">Dashboard</h1>
-            <p className="text-sm text-logica-lilac">
-              Confiança, sofisticação e clareza para monitorar empréstimos e consórcios em um painel SaaS-level.
-            </p>
-            <div className="flex flex-wrap gap-2 text-xs text-logica-purple">
-              <span className="rounded-full bg-logica-light-lilac/80 px-3 py-1 font-semibold shadow-inner ring-1 ring-white/70">
-                {companyName}
-              </span>
-              {next7DaysCount > 0 && (
-                <span className="flex items-center gap-2 rounded-full bg-white/80 px-3 py-1 font-semibold shadow-inner text-logica-purple ring-1 ring-logica-purple/10">
-                  <span className="text-logica-purple">{badgeIcons.bell}</span> {next7DaysCount} vencimentos em 7 dias
-                </span>
-              )}
-              {overdueInstallments.length > 0 && (
-                <span className="flex items-center gap-2 rounded-full bg-white/80 px-3 py-1 font-semibold shadow-inner text-rose-600 ring-1 ring-rose-100">
-                  <span className="text-rose-500">{badgeIcons.alert}</span> {overdueInstallments.length} em atraso
-                </span>
-              )}
-            </div>
+            {hasScheduleBadges && (
+              <div className="flex flex-wrap gap-2 text-xs text-logica-purple">
+                {next7DaysCount > 0 && (
+                  <span className="flex items-center gap-2 rounded-full bg-white/80 px-3 py-1 font-semibold shadow-inner text-logica-purple ring-1 ring-logica-purple/10">
+                    <span className="text-logica-purple">{badgeIcons.bell}</span> {next7DaysCount} vencimentos em 7 dias
+                  </span>
+                )}
+                {overdueInstallments.length > 0 && (
+                  <span className="flex items-center gap-2 rounded-full bg-white/80 px-3 py-1 font-semibold shadow-inner text-rose-600 ring-1 ring-rose-100">
+                    <span className="text-rose-500">{badgeIcons.alert}</span> {overdueInstallments.length} em atraso
+                  </span>
+                )}
+              </div>
+            )}
           </div>
 
           <div className="flex flex-wrap items-center gap-3">
