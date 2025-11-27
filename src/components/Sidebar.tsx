@@ -76,8 +76,8 @@ export function Sidebar({ activeView, onChangeView, isOpen, onClose }: SidebarPr
         )}
       >
         <div className="flex items-center gap-3 rounded-2xl bg-white/10 px-4 py-3 ring-1 ring-white/15">
-          <div className="flex h-12 w-12 items-center justify-center rounded-xl bg-white/20 text-lg font-bold text-white shadow-inner shadow-black/10">
-            L
+          <div className="flex h-12 w-12 items-center justify-center rounded-xl bg-white/20 shadow-inner shadow-black/10">
+            <img src="/logo.png" alt="Lógica" className="h-10 w-10 object-contain" />
           </div>
           <div>
             <p className="text-sm font-semibold tracking-wide text-white">Lógica Dashboard</p>
