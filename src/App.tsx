@@ -134,7 +134,7 @@ function AppContent() {
     selectedCompany === "all" ? undefined : companies.find((company) => company.id === selectedCompany);
 
   return (
-    <div className="min-h-screen bg-gradient-to-b from-[#f9f5ff] via-[#fff8fb] to-[#f3ecff] text-logica-deep-purple antialiased md:flex">
+    <div className="min-h-screen bg-[#fdfbff] text-logica-deep-purple antialiased md:flex">
       <Sidebar activeView={view} onChangeView={setView} isOpen={isSidebarOpen} onClose={() => setIsSidebarOpen(false)} />
       <main className="flex-1 overflow-y-auto p-4 sm:p-6 md:p-8">
         <div className="mb-4 flex items-center justify-between md:hidden">
