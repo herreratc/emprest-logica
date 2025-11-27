@@ -463,12 +463,6 @@ export function Dashboard({
         <div className="flex flex-wrap items-start justify-between gap-4">
           <div className="space-y-2">
             <p className="text-xs font-semibold uppercase tracking-wide text-logica-lilac">Visão consolidada</p>
-            <div className="space-y-1">
-              <h1 className="text-3xl font-extrabold uppercase tracking-tight text-logica-purple">Dashboard</h1>
-              <p className="max-w-3xl text-sm text-logica-lilac">
-                Confiança, sofisticação e clareza para monitorar empréstimos e consórcios em um painel SaaS-level.
-              </p>
-            </div>
             <span className="sr-only">Empresa selecionada: {companyName}</span>
             <h1 className="text-3xl font-extrabold uppercase tracking-tight text-logica-purple">Dashboard</h1>
             {hasScheduleBadges && (
