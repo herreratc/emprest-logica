@@ -307,10 +307,6 @@ export function Dashboard({
     }
   ];
 
-  const companyName = selectedCompany === "all"
-    ? "Todas as empresas"
-    : companies.find((company) => company.id === selectedCompany)?.name ?? "Empresa";
-
   const scheduleWindowStart = useMemo(() => {
     const start = new Date();
     start.setDate(start.getDate() - 30);
@@ -453,6 +449,8 @@ export function Dashboard({
       trend: { direction: "up", value: "2,9%", caption: "entrada de agenda" }
     }
   ];
+
+  const hasScheduleBadges = next7DaysCount > 0 || overdueInstallments.length > 0;
 
   return (
     <div className="space-y-5 md:space-y-6">
