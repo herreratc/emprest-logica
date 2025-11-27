@@ -254,41 +254,33 @@ export function Dashboard({
 
   const hasCashflow = monthlyCashflow.some((month) => month.total > 0);
 
-  const mapToPoints = (selector: (month: (typeof monthlyCashflow)[number]) => number) => {
-    if (monthlyCashflow.length === 0) return [] as { x: number; y: number; value: number }[];
-    const denominator = Math.max(monthlyCashflow.length - 1, 1);
+  const chartLeft = 12;
+  const chartWidth = 88;
+
+  const barLayout = useMemo(() => {
+    if (monthlyCashflow.length === 0) return [] as { x: number; barWidth: number; barHeight: number; y: number; label: string; total: number }[];
+
+    const slotWidth = chartWidth / monthlyCashflow.length;
+    const gap = Math.min(2, slotWidth * 0.25);
+    const barWidth = Math.max(4, slotWidth - gap);
+
     return monthlyCashflow.map((month, index) => {
-      const x = (index / denominator) * 100;
-      const value = selector(month);
-      const y = 100 - (value / maxMonthlyCashflow) * 100;
-      return { x: Number(x.toFixed(2)), y: Number(y.toFixed(2)), value };
+      const baseX = chartLeft + index * slotWidth + (slotWidth - barWidth) / 2;
+      const barHeight = (month.total / maxMonthlyCashflow) * 100;
+      const y = 100 - barHeight;
+
+      return {
+        x: Number(baseX.toFixed(2)),
+        barWidth: Number(barWidth.toFixed(2)),
+        barHeight: Number(barHeight.toFixed(2)),
+        y: Number(Math.max(y, 0).toFixed(2)),
+        label: month.label,
+        total: month.total
+      };
     });
-  };
+  }, [chartLeft, chartWidth, maxMonthlyCashflow, monthlyCashflow]);
 
-  const createSmoothPath = (points: { x: number; y: number }[]) => {
-    if (points.length === 0) return "";
-    if (points.length === 1) return `M 0,${points[0].y} L 100,${points[0].y}`;
-
-    return points.reduce((path, point, index) => {
-      if (index === 0) return `M ${point.x},${point.y}`;
-      const previous = points[index - 1];
-      const controlX = (previous.x + point.x) / 2;
-      return `${path} Q ${controlX},${previous.y} ${point.x},${point.y}`;
-    }, "");
-  };
-
-  const createAreaPath = (points: { x: number; y: number }[]) => {
-    if (points.length === 0) return "";
-    const linePath = createSmoothPath(points);
-    const lastPoint = points[points.length - 1];
-    const firstPoint = points[0];
-    return `${linePath} L ${lastPoint.x},100 L ${firstPoint.x},100 Z`;
-  };
-
-  const openPoints = mapToPoints((month) => month.openValue);
-  const activePoints = mapToPoints((month) => month.activeValue);
-  const totalOpenFlow = monthlyCashflow.reduce((acc, month) => acc + month.openValue, 0);
-  const totalActiveFlow = monthlyCashflow.reduce((acc, month) => acc + month.activeValue, 0);
+  const totalMonthlyFlow = monthlyCashflow.reduce((acc, month) => acc + month.total, 0);
 
   const compositionBreakdown = [
     {
@@ -577,10 +569,7 @@ export function Dashboard({
             </div>
             <div className="flex flex-wrap items-center gap-3 text-xs font-semibold text-logica-purple">
               <div className="flex items-center gap-2 rounded-full bg-white/80 px-3 py-2 shadow-inner ring-1 ring-logica-light-lilac">
-                <span className="h-2.5 w-2.5 rounded-full bg-logica-purple" /> Em aberto: {formatCurrency(totalOpenFlow)}
-              </div>
-              <div className="flex items-center gap-2 rounded-full bg-white/80 px-3 py-2 shadow-inner ring-1 ring-logica-light-lilac">
-                <span className="h-2.5 w-2.5 rounded-full bg-logica-rose" /> Ativo: {formatCurrency(totalActiveFlow)}
+                <span className="h-2.5 w-2.5 rounded-full bg-logica-purple" /> Total mensal: {formatCurrency(totalMonthlyFlow)}
               </div>
               <div className="flex items-center gap-2 rounded-full bg-logica-light-lilac/70 px-3 py-2 shadow-inner">
                 <span className="text-logica-purple">Período</span>
@@ -590,15 +579,11 @@ export function Dashboard({
             </div>
           </div>
           <div className="relative mt-2 h-80 w-full">
-            <svg viewBox="0 0 100 100" preserveAspectRatio="none" className="h-full w-full">
+            <svg viewBox="0 0 100 110" preserveAspectRatio="none" className="h-full w-full">
               <defs>
-                <linearGradient id="openArea" x1="0" y1="0" x2="0" y2="1">
-                  <stop offset="0%" stopColor="#6a1b9a" stopOpacity="0.35" />
-                  <stop offset="100%" stopColor="#6a1b9a" stopOpacity="0" />
-                </linearGradient>
-                <linearGradient id="activeArea" x1="0" y1="0" x2="0" y2="1">
-                  <stop offset="0%" stopColor="#e91e63" stopOpacity="0.35" />
-                  <stop offset="100%" stopColor="#e91e63" stopOpacity="0" />
+                <linearGradient id="totalBars" x1="0" y1="1" x2="0" y2="0">
+                  <stop offset="0%" stopColor="#6a1b9a" stopOpacity="0.3" />
+                  <stop offset="100%" stopColor="#6a1b9a" stopOpacity="0.9" />
                 </linearGradient>
               </defs>
 
@@ -611,7 +596,7 @@ export function Dashboard({
                         {scale.label}
                       </text>
                       <line
-                        x1="12"
+                        x1={chartLeft}
                         x2="100"
                         y1={position}
                         y2={position}
@@ -623,24 +608,35 @@ export function Dashboard({
                 })}
               </g>
 
-              <path d={createAreaPath(openPoints)} fill="url(#openArea)" />
-              <path d={createSmoothPath(openPoints)} fill="none" stroke="#6a1b9a" strokeWidth={1.2} />
-
-              <path d={createAreaPath(activePoints)} fill="url(#activeArea)" />
-              <path d={createSmoothPath(activePoints)} fill="none" stroke="#e91e63" strokeWidth={1.2} />
-
-              {monthlyCashflow.map((month, index) => {
-                const x = openPoints[index]?.x ?? 0;
+              {barLayout.map((bar, index) => {
+                const barCenter = bar.x + bar.barWidth / 2;
                 return (
-                  <text
-                    key={`${month.key}-label`}
-                    x={x}
-                    y={97}
-                    className="fill-logica-lilac text-[2.5px] font-semibold"
-                    textAnchor="middle"
-                  >
-                    {month.label}
-                  </text>
+                  <g key={`${bar.label}-${index}`}>
+                    <rect
+                      x={bar.x}
+                      y={bar.y}
+                      width={bar.barWidth}
+                      height={bar.barHeight}
+                      rx={1.8}
+                      fill="url(#totalBars)"
+                    />
+                    <text
+                      x={barCenter}
+                      y={Math.max(bar.y - 2, 4)}
+                      className="fill-logica-purple text-[2.6px] font-semibold"
+                      textAnchor="middle"
+                    >
+                      {formatCurrency(bar.total)}
+                    </text>
+                    <text
+                      x={barCenter}
+                      y={105}
+                      className="fill-logica-lilac text-[2.5px] font-semibold"
+                      textAnchor="middle"
+                    >
+                      {bar.label}
+                    </text>
+                  </g>
                 );
               })}
             </svg>
