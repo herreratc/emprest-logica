@@ -313,7 +313,6 @@ export function Dashboard({
 
   const scheduleWindowStart = useMemo(() => {
     const start = new Date();
-    start.setDate(start.getDate() - 30);
     start.setHours(0, 0, 0, 0);
     return start;
   }, []);
@@ -347,7 +346,7 @@ export function Dashboard({
     const endLabel = scheduleDateWithYearFormatter.format(scheduleWindowEnd).replace(".", "");
 
     if (periodFilteredInstallments.length > 0) {
-      return `Últimos 30 dias (${startLabel} — ${endLabel})`;
+      return `Próximos 30 dias (${startLabel} — ${endLabel})`;
     }
 
     const ordered = [...scheduleSource].sort(
@@ -679,7 +678,7 @@ export function Dashboard({
                 Exibindo {nextInstallments.length} de {scheduleSource.length} lançamentos
               </span>
               <span className="rounded-full bg-white/80 px-3 py-1 shadow-inner">
-                {periodFilteredInstallments.length > 0 ? "Últimos 30 dias" : "Período padrão"}
+                {periodFilteredInstallments.length > 0 ? "Próximos 30 dias" : "Período padrão"}
               </span>
             </div>
           </div>
