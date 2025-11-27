@@ -4,11 +4,11 @@ export default {
   theme: {
     extend: {
       colors: {
-        "logica-deep-purple": "#491a40",
-        "logica-purple": "#61105c",
-        "logica-lilac": "#bc9bbb",
-        "logica-light-lilac": "#ebdcf9",
-        "logica-rose": "#b42a98"
+        "logica-deep-purple": "#4a0e73",
+        "logica-purple": "#6a1b9a",
+        "logica-lilac": "#c3aedc",
+        "logica-light-lilac": "#f3e8ff",
+        "logica-rose": "#e91e63"
       }
     }
   },
