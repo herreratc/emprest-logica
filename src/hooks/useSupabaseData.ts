@@ -349,8 +349,8 @@ const computeInstallmentAutoStatus = (installment: Installment, referenceDate: D
     999
   );
 
-  if (dueDate <= endOfToday) {
-    return "paga";
+  if (dueDate < endOfToday) {
+    return "vencida";
   }
 
   return "pendente";
