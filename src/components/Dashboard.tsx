@@ -466,8 +466,9 @@ export function Dashboard({
                 Confiança, sofisticação e clareza para monitorar empréstimos e consórcios em um painel SaaS-level.
               </p>
             </div>
-            <div className="flex flex-wrap gap-2 text-xs font-semibold text-logica-purple">
-              <span className="rounded-full bg-white/70 px-3 py-1 shadow-sm ring-1 ring-logica-light-lilac/70">
+            <h1 className="text-3xl font-extrabold uppercase tracking-tight text-logica-purple">Dashboard</h1>
+            <div className="flex flex-wrap gap-2 text-xs text-logica-purple">
+              <span className="rounded-full bg-logica-light-lilac/80 px-3 py-1 font-semibold shadow-inner ring-1 ring-white/70">
                 {companyName}
               </span>
               {next7DaysCount > 0 && (
