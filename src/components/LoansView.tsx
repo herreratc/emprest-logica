@@ -160,6 +160,12 @@ export function LoansView({
   const toStringValue = (value: number | string | null | undefined) =>
     value === null || value === undefined ? "" : String(value);
 
+  const toCurrencyInputValue = (value: number | string | null | undefined) => {
+    if (value === null || value === undefined) return "";
+    const numeric = typeof value === "number" ? value : Number(value);
+    return Number.isFinite(numeric) ? numeric.toFixed(2) : String(value);
+  };
+
   const filteredLoans = useMemo(() => {
     return loans.filter((loan) => (statusFilter === "todos" ? true : loan.status === statusFilter));
   }, [loans, statusFilter]);
@@ -193,7 +199,7 @@ export function LoansView({
         paidInstallments: toStringValue(editing.paidInstallments),
         remainingInstallments: toStringValue(editing.remainingInstallments),
         amountPaid: toStringValue(editing.amountPaid),
-        amountToPay: toStringValue(editing.amountToPay),
+        amountToPay: toCurrencyInputValue(editing.amountToPay),
         currentDate: editing.currentDate,
         contractStart: editing.contractStart
       });
