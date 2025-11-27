@@ -150,10 +150,9 @@ export function Dashboard({
   }, [installments, activeLoans, activeConsortiums]);
 
   const upcomingInstallments = activeInstallments.filter((installment) => installment.status !== "paga");
-  const totalLoanValue = activeLoans.reduce((acc, loan) => acc + loan.amountToPay, 0);
-  const totalConsortiumValue = activeConsortiums.reduce((acc, item) => acc + item.outstandingBalance, 0);
-  const totalDebt = totalLoanValue + totalConsortiumValue;
-  const upcomingInstallmentsValue = upcomingInstallments.reduce((acc, installment) => acc + installment.value, 0);
+  const contractedLoanValue = activeLoans.reduce((acc, loan) => acc + loan.totalValue, 0);
+  const contractedConsortiumValue = activeConsortiums.reduce((acc, item) => acc + item.creditToReceive, 0);
+  const totalDebt = contractedLoanValue + contractedConsortiumValue;
   const today = new Date();
   const overdueInstallments = upcomingInstallments.filter(
     (installment) => new Date(installment.date) < today && installment.status === "pendente"
@@ -240,7 +239,7 @@ export function Dashboard({
   }, [activeInstallments, monthlyStart, today]);
 
   const maxMonthlyCashflow = Math.max(1, ...monthlyCashflow.map((month) => month.total));
-  const loanShare = totalDebt ? Math.round((totalLoanValue / totalDebt) * 100) : 0;
+  const loanShare = totalDebt ? Math.round((contractedLoanValue / totalDebt) * 100) : 0;
   const consortiumShare = 100 - loanShare;
   const yAxisSteps = 4;
   const yAxisScale = Array.from({ length: yAxisSteps }, (_, index) => {
@@ -293,14 +292,14 @@ export function Dashboard({
   const compositionBreakdown = [
     {
       label: "Empréstimos",
-      value: totalLoanValue,
+      value: contractedLoanValue,
       share: loanShare,
       accent: "text-logica-rose",
       gradient: "from-logica-rose/80 to-logica-purple/80"
     },
     {
       label: "Consórcios",
-      value: totalConsortiumValue,
+      value: contractedConsortiumValue,
       share: consortiumShare,
       accent: "text-logica-purple",
       gradient: "from-logica-purple/80 to-logica-lilac/80"
@@ -404,6 +403,20 @@ export function Dashboard({
     progress?: number;
   };
 
+  const nextDueInstallments = useMemo(() => {
+    if (upcomingInstallments.length === 0) return [] as Installment[];
+    const normalizeDate = (date: string) => {
+      const parsed = new Date(date);
+      parsed.setHours(0, 0, 0, 0);
+      return parsed.getTime();
+    };
+
+    const earliestDueTime = Math.min(...upcomingInstallments.map((installment) => normalizeDate(installment.date)));
+    return upcomingInstallments.filter((installment) => normalizeDate(installment.date) === earliestDueTime);
+  }, [upcomingInstallments]);
+
+  const nextDueInstallmentsValue = nextDueInstallments.reduce((acc, installment) => acc + installment.value, 0);
+
   const summaryCards: SummaryCard[] = [
     {
       label: "Total de empréstimos",
@@ -422,17 +435,17 @@ export function Dashboard({
       trend: { direction: "up", value: "1,1%", caption: "crescimento orgânico" }
     },
     {
-      label: "Empréstimos em R$",
-      value: formatCurrency(totalLoanValue),
-      description: "Saldo atual a pagar",
+      label: "Total de empréstimos contratado",
+      value: formatCurrency(contractedLoanValue),
+      description: "Valor bruto dos contratos",
       icon: "cash",
       tone: "rose",
       trend: { direction: "down", value: "0,8%", caption: "queda com amortizações" }
     },
     {
-      label: "Consórcios em R$",
-      value: formatCurrency(totalConsortiumValue),
-      description: "Saldo devedor das cotas",
+      label: "Total de consórcio contratado",
+      value: formatCurrency(contractedConsortiumValue),
+      description: "Créditos adquiridos",
       icon: "pie",
       tone: "purple",
       trend: { direction: "up", value: "3,2%", caption: "novas adesões" }
@@ -440,15 +453,15 @@ export function Dashboard({
     {
       label: "Dívida total",
       value: formatCurrency(totalDebt),
-      description: "Empréstimos + consórcios",
+      description: "Contratos contratados",
       icon: "wallet",
       tone: "purple",
       trend: { direction: "down", value: "1,4%", caption: "melhora de carteira" }
     },
     {
-      label: "Próximos pagamentos",
-      value: formatCurrency(upcomingInstallmentsValue),
-      description: "Parcelas ainda não pagas",
+      label: "Próximas parcelas",
+      value: formatCurrency(nextDueInstallmentsValue),
+      description: "Próximas parcelas a vencer",
       icon: "calendar",
       tone: "purple",
       trend: { direction: "up", value: "2,9%", caption: "entrada de agenda" }
