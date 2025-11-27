@@ -116,10 +116,6 @@ export function UsersView() {
 
       <section className="rounded-2xl border border-logica-purple/20 bg-white/90 p-6 shadow-lg">
         <h2 className="text-lg font-semibold text-logica-purple">Solicitar criação de usuário</h2>
-        <p className="text-sm text-logica-lilac">
-          Clique em salvar para que o Supabase envie o e-mail de convite. Depois, ative ou desative o acesso diretamente
-          pelo painel de autenticação.
-        </p>
 
         <form
           onSubmit={(event) => {

@@ -113,9 +113,6 @@ export function Sidebar({ activeView, onChangeView, isOpen, onClose }: SidebarPr
           ))}
         </nav>
         <div className="mt-auto space-y-3 pt-4">
-          <div className="rounded-2xl bg-white/10 p-4 text-xs text-white/80 ring-1 ring-white/10">
-            Acompanhe KPIs em tempo real com a experiência premium do painel SaaS-level.
-          </div>
           <button
             type="button"
             onClick={onClose}
