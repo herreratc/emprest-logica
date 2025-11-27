@@ -7,8 +7,8 @@ const menuItems = [
   { key: "consortiums", label: "Consórcios", icon: "layers" },
   { key: "installments", label: "Parcelas", icon: "calendar" },
   { key: "settlements", label: "Quitações", icon: "shield" },
-  { key: "users", label: "Usuários", icon: "users" },
-  { key: "simulation", label: "Simulação", icon: "spark" }
+  { key: "simulation", label: "Simulação", icon: "spark" },
+  { key: "users", label: "Usuários", icon: "users" }
 ] as const;
 
 const menuIcons = {
