@@ -455,13 +455,16 @@ export function Dashboard({
   ];
 
   return (
-    <div className="space-y-6">
-      <header className="overflow-hidden rounded-3xl border border-white/70 bg-white/80 p-6 shadow-[0_18px_36px_rgba(106,27,154,0.08)] backdrop-blur-sm">
+    <div className="space-y-5 md:space-y-6">
+      <header className="flex flex-col gap-3">
         <div className="flex flex-wrap items-start justify-between gap-4">
           <div className="space-y-2">
-            <div className="flex items-center gap-3 text-xs font-semibold uppercase tracking-wide text-logica-lilac">
-              <span className="h-8 w-8 rounded-full bg-gradient-to-br from-logica-purple to-logica-rose" />
-              <span>Visão consolidada</span>
+            <p className="text-xs font-semibold uppercase tracking-wide text-logica-lilac">Visão consolidada</p>
+            <div className="space-y-1">
+              <h1 className="text-3xl font-extrabold uppercase tracking-tight text-logica-purple">Dashboard</h1>
+              <p className="max-w-3xl text-sm text-logica-lilac">
+                Confiança, sofisticação e clareza para monitorar empréstimos e consórcios em um painel SaaS-level.
+              </p>
             </div>
             <h1 className="text-3xl font-extrabold uppercase tracking-tight text-logica-purple">Dashboard</h1>
             <div className="flex flex-wrap gap-2 text-xs text-logica-purple">
@@ -469,25 +472,25 @@ export function Dashboard({
                 {companyName}
               </span>
               {next7DaysCount > 0 && (
-                <span className="flex items-center gap-2 rounded-full bg-white/80 px-3 py-1 font-semibold shadow-inner text-logica-purple ring-1 ring-logica-purple/10">
+                <span className="flex items-center gap-2 rounded-full bg-white/80 px-3 py-1 shadow-sm ring-1 ring-logica-purple/10">
                   <span className="text-logica-purple">{badgeIcons.bell}</span> {next7DaysCount} vencimentos em 7 dias
                 </span>
               )}
               {overdueInstallments.length > 0 && (
-                <span className="flex items-center gap-2 rounded-full bg-white/80 px-3 py-1 font-semibold shadow-inner text-rose-600 ring-1 ring-rose-100">
+                <span className="flex items-center gap-2 rounded-full bg-white/80 px-3 py-1 shadow-sm ring-1 ring-rose-100">
                   <span className="text-rose-500">{badgeIcons.alert}</span> {overdueInstallments.length} em atraso
                 </span>
               )}
             </div>
           </div>
 
-          <div className="flex flex-wrap items-center gap-3">
-            <div className="rounded-full bg-white px-4 py-2 text-sm font-semibold text-logica-purple shadow-inner ring-1 ring-logica-light-lilac">
-              Visualizando:
+          <div className="flex flex-wrap items-center gap-3 text-sm font-semibold text-logica-purple">
+            <div className="flex items-center gap-2 rounded-full border border-logica-light-lilac/70 bg-white/80 px-3 py-2 shadow-sm">
+              <span className="text-[11px] uppercase tracking-wide text-logica-lilac">Visualizando</span>
               <select
                 value={selectedCompany}
                 onChange={(event) => onSelectCompany(event.target.value as typeof selectedCompany)}
-                className="ml-2 rounded-full bg-transparent text-logica-deep-purple focus:outline-none"
+                className="rounded-full bg-transparent px-1 text-logica-deep-purple focus:outline-none"
               >
                 <option value="all">Todas as empresas ⌄</option>
                 {companies.map((company) => (
@@ -497,19 +500,19 @@ export function Dashboard({
                 ))}
               </select>
             </div>
-            <div className="flex items-center gap-3 rounded-2xl bg-gradient-to-r from-logica-purple to-logica-rose px-4 py-3 text-sm font-semibold text-white shadow-lg">
-              <div className="flex h-10 w-10 items-center justify-center rounded-full bg-white/20 text-base font-bold">
+            <div className="flex items-center gap-3 rounded-full border border-logica-light-lilac/70 bg-white/80 px-3 py-2 shadow-sm">
+              <div className="flex h-10 w-10 items-center justify-center rounded-full bg-gradient-to-br from-logica-purple to-logica-rose text-base font-bold text-white">
                 {userName.slice(0, 2).toUpperCase()}
               </div>
-              <div className="text-left">
-                <p className="text-[11px] uppercase tracking-wide text-white/70">Usuário</p>
-                <p className="text-sm font-bold">{userName}</p>
+              <div className="text-left leading-tight">
+                <p className="text-[11px] uppercase tracking-wide text-logica-lilac">Usuário</p>
+                <p className="text-sm font-bold text-logica-purple">{userName}</p>
               </div>
               {isAuthenticated && onSignOut && (
                 <button
                   type="button"
                   onClick={onSignOut}
-                  className="flex h-9 w-9 items-center justify-center rounded-full bg-white/15 text-white transition hover:bg-white/25"
+                  className="flex h-8 w-8 items-center justify-center rounded-full bg-logica-purple/10 text-logica-purple transition hover:bg-logica-purple/20"
                   aria-label="Sair"
                 >
                   <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={1.8} className="h-5 w-5">
