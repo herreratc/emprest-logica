@@ -2,6 +2,7 @@ import { clsx } from "clsx";
 import { useMemo } from "react";
 import type { Company, Consortium, Installment, Loan } from "../data/mockData";
 import { formatCurrency } from "../utils/formatters";
+import CompanySelect from "./CompanySelect";
 
 const scheduleDateFormatter = new Intl.DateTimeFormat("pt-BR", {
   day: "2-digit",
@@ -494,21 +495,13 @@ export function Dashboard({
           </div>
 
           <div className="flex flex-wrap items-center gap-3 text-sm font-semibold text-logica-purple">
-            <div className="flex items-center gap-2 rounded-full border border-logica-light-lilac/70 bg-white/80 px-3 py-2 shadow-sm">
-              <span className="text-[11px] uppercase tracking-wide text-logica-lilac">Visualizando</span>
-              <select
-                value={selectedCompany}
-                onChange={(event) => onSelectCompany(event.target.value as typeof selectedCompany)}
-                className="rounded-full bg-transparent px-1 text-logica-deep-purple focus:outline-none"
-              >
-                <option value="all">Todas as empresas ⌄</option>
-                {companies.map((company) => (
-                  <option key={company.id} value={company.id}>
-                    {company.name}
-                  </option>
-                ))}
-              </select>
-            </div>
+            <CompanySelect
+              label="Visualizando"
+              value={selectedCompany}
+              onChange={(value) => onSelectCompany(value as typeof selectedCompany)}
+              companies={companies}
+              className="min-w-[240px]"
+            />
             <div className="flex items-center gap-3 rounded-full border border-logica-light-lilac/70 bg-white/80 px-3 py-2 shadow-sm">
               <div className="flex h-10 w-10 items-center justify-center rounded-full bg-gradient-to-br from-logica-purple to-logica-rose text-base font-bold text-white">
                 {userName.slice(0, 2).toUpperCase()}

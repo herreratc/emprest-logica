@@ -2,6 +2,7 @@ import { useMemo, useState } from "react";
 import type { Company, Consortium, Installment, Loan } from "../data/mockData";
 import { formatCurrency, formatDate } from "../utils/formatters";
 import type { MutationResult, UpsertInstallmentInput } from "../hooks/useSupabaseData";
+import CompanySelect from "./CompanySelect";
 
 const cardClass = "rounded-2xl border border-logica-purple/20 bg-white/80 p-4 shadow-md backdrop-blur";
 const inputClass =
@@ -181,18 +182,13 @@ export function InstallmentsView({
           </p>
         </div>
         <div className="flex flex-wrap items-center gap-2">
-          <select
+          <CompanySelect
             value={selectedCompany}
-            onChange={(event) => onSelectCompany(event.target.value as typeof selectedCompany)}
-            className="rounded-full border border-logica-lilac bg-white px-4 py-2 text-sm font-medium text-logica-purple shadow"
-          >
-            <option value="all">Todas as empresas</option>
-            {companies.map((company) => (
-              <option key={company.id} value={company.id}>
-                {company.name}
-              </option>
-            ))}
-          </select>
+            onChange={(value) => onSelectCompany(value as typeof selectedCompany)}
+            companies={companies}
+            className="min-w-[220px]"
+            ariaLabel="Filtrar parcelas por empresa"
+          />
         </div>
       </header>
 

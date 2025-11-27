@@ -3,6 +3,7 @@ import type { Company, Loan, LoanStatus } from "../data/mockData";
 import { formatCurrency, formatDate, formatPercentage } from "../utils/formatters";
 import { clsx } from "clsx";
 import type { MutationResult, UpsertLoanInput } from "../hooks/useSupabaseData";
+import CompanySelect from "./CompanySelect";
 
 const filterButtonClass =
   "rounded-full border px-4 py-2 text-xs font-semibold uppercase tracking-wide transition";
@@ -382,18 +383,13 @@ export function LoansView({
           <p className="text-sm text-logica-lilac">Controle completo dos contratos e condições financeiras.</p>
         </div>
         <div className="flex flex-wrap items-center gap-2">
-          <select
+          <CompanySelect
             value={selectedCompany}
-            onChange={(event) => onSelectCompany(event.target.value as typeof selectedCompany)}
-            className="rounded-full border border-logica-lilac bg-white px-4 py-2 text-sm font-medium text-logica-purple shadow"
-          >
-            <option value="all">Todas as empresas</option>
-            {companies.map((company) => (
-              <option key={company.id} value={company.id}>
-                {company.name}
-              </option>
-            ))}
-          </select>
+            onChange={(value) => onSelectCompany(value as typeof selectedCompany)}
+            companies={companies}
+            className="min-w-[220px]"
+            ariaLabel="Filtrar por empresa"
+          />
           <button
             className="rounded-full bg-logica-rose px-4 py-2 text-sm font-semibold text-white shadow"
             onClick={handleCreate}

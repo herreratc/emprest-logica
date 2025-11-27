@@ -2,6 +2,7 @@ import { useMemo, useState } from "react";
 import type { Company, Consortium, Loan } from "../data/mockData";
 import type { MutationResult, UpsertConsortiumInput, UpsertLoanInput } from "../hooks/useSupabaseData";
 import { formatCurrency } from "../utils/formatters";
+import CompanySelect from "./CompanySelect";
 
 const cardClass = "rounded-2xl border border-logica-purple/20 bg-white/90 p-6 shadow-lg";
 
@@ -101,18 +102,13 @@ export function SettlementsView({
           </p>
         </div>
         <div className="flex flex-wrap items-center gap-2">
-          <select
+          <CompanySelect
             value={selectedCompany}
-            onChange={(event) => onSelectCompany(event.target.value as typeof selectedCompany)}
-            className="rounded-full border border-logica-lilac bg-white px-4 py-2 text-sm font-medium text-logica-purple shadow"
-          >
-            <option value="all">Todas as empresas</option>
-            {companies.map((company) => (
-              <option key={company.id} value={company.id}>
-                {company.name}
-              </option>
-            ))}
-          </select>
+            onChange={(value) => onSelectCompany(value as typeof selectedCompany)}
+            companies={companies}
+            className="min-w-[220px]"
+            ariaLabel="Filtrar contratos por empresa"
+          />
         </div>
       </header>
 
