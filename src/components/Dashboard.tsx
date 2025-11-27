@@ -246,6 +246,16 @@ export function Dashboard({
 
   const chartLeft = 12;
   const chartWidth = 88;
+  const yAxisSteps = 5;
+
+  const yAxisScale = useMemo(
+    () =>
+      Array.from({ length: yAxisSteps + 1 }, (_, index) => ({
+        id: `y-${index}`,
+        label: formatCurrency(Math.round((maxMonthlyCashflow / yAxisSteps) * index))
+      })),
+    [maxMonthlyCashflow]
+  );
 
   const barLayout = useMemo(() => {
     if (monthlyCashflow.length === 0) return [] as { x: number; barWidth: number; barHeight: number; y: number; label: string; total: number }[];
@@ -568,67 +578,69 @@ export function Dashboard({
               </div>
             </div>
           </div>
-          <div className="relative mt-2 h-80 w-full">
-            <svg viewBox="0 0 100 110" preserveAspectRatio="none" className="h-full w-full">
-              <defs>
-                <linearGradient id="totalBars" x1="0" y1="1" x2="0" y2="0">
-                  <stop offset="0%" stopColor="#6a1b9a" stopOpacity="0.3" />
-                  <stop offset="100%" stopColor="#6a1b9a" stopOpacity="0.9" />
-                </linearGradient>
-              </defs>
+          {barLayout.length > 0 ? (
+            <div className="relative mt-2 h-80 w-full">
+              <svg viewBox="0 0 100 110" preserveAspectRatio="none" className="h-full w-full">
+                <defs>
+                  <linearGradient id="totalBars" x1="0" y1="1" x2="0" y2="0">
+                    <stop offset="0%" stopColor="#6a1b9a" stopOpacity="0.3" />
+                    <stop offset="100%" stopColor="#6a1b9a" stopOpacity="0.9" />
+                  </linearGradient>
+                </defs>
 
-              <g>
-                {yAxisScale.map((scale, index) => {
-                  const position = (100 / yAxisSteps) * (yAxisSteps - index);
+                <g>
+                  {yAxisScale.map((scale, index) => {
+                    const position = (100 / yAxisSteps) * (yAxisSteps - index);
+                    return (
+                      <g key={scale.id}>
+                        <text x="2" y={position - 2} className="fill-logica-lilac text-[2.5px] font-semibold">
+                          {scale.label}
+                        </text>
+                        <line
+                          x1={chartLeft}
+                          x2="100"
+                          y1={position}
+                          y2={position}
+                          className="stroke-logica-light-lilac/60"
+                          strokeWidth={0.4}
+                        />
+                      </g>
+                    );
+                  })}
+                </g>
+
+                {barLayout.map((bar, index) => {
+                  const barCenter = bar.x + bar.barWidth / 2;
                   return (
-                    <g key={scale.id}>
-                      <text x="2" y={position - 2} className="fill-logica-lilac text-[2.5px] font-semibold">
-                        {scale.label}
-                      </text>
-                      <line
-                        x1={chartLeft}
-                        x2="100"
-                        y1={position}
-                        y2={position}
-                        className="stroke-logica-light-lilac/60"
-                        strokeWidth={0.4}
+                    <g key={`${bar.label}-${index}`}>
+                      <rect
+                        x={bar.x}
+                        y={bar.y}
+                        width={bar.barWidth}
+                        height={bar.barHeight}
+                        rx={1.8}
+                        fill="url(#totalBars)"
                       />
+                      <text
+                        x={barCenter}
+                        y={Math.max(bar.y - 2, 4)}
+                        className="fill-logica-purple text-[2.6px] font-semibold"
+                        textAnchor="middle"
+                      >
+                        {formatCurrency(bar.total)}
+                      </text>
+                      <text
+                        x={barCenter}
+                        y={105}
+                        className="fill-logica-lilac text-[2.5px] font-semibold"
+                        textAnchor="middle"
+                      >
+                        {bar.label}
+                      </text>
                     </g>
                   );
                 })}
-              </g>
-
-              {barLayout.map((bar, index) => {
-                const barCenter = bar.x + bar.barWidth / 2;
-                return (
-                  <g key={`${bar.label}-${index}`}>
-                    <rect
-                      x={bar.x}
-                      y={bar.y}
-                      width={bar.barWidth}
-                      height={bar.barHeight}
-                      rx={1.8}
-                      fill="url(#totalBars)"
-                    />
-                    <text
-                      x={barCenter}
-                      y={Math.max(bar.y - 2, 4)}
-                      className="fill-logica-purple text-[2.6px] font-semibold"
-                      textAnchor="middle"
-                    >
-                      {formatCurrency(bar.total)}
-                    </text>
-                    <text
-                      x={barCenter}
-                      y={105}
-                      className="fill-logica-lilac text-[2.5px] font-semibold"
-                      textAnchor="middle"
-                    >
-                      {bar.label}
-                    </text>
-                  </g>
-                );
-              })}
+              </svg>
             </div>
           ) : (
             <div className="alert alert-light text-[11px] font-semibold text-logica-lilac" role="alert">
