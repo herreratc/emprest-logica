@@ -254,39 +254,42 @@ export function Dashboard({
 
   const hasCashflow = monthlyCashflow.some((month) => month.total > 0);
 
-  const mapToPoints = (selector: (month: (typeof monthlyCashflow)[number]) => number) => {
-    if (monthlyCashflow.length === 0) return [] as { x: number; y: number; value: number }[];
-    const denominator = Math.max(monthlyCashflow.length - 1, 1);
+  const chartLeft = 12;
+  const chartWidth = 88;
+
+  const barLayout = useMemo(() => {
+    if (monthlyCashflow.length === 0) return [] as {
+      x: number;
+      barWidth: number;
+      label: string;
+      activeHeight: number;
+      activeY: number;
+      openHeight: number;
+      openY: number;
+    }[];
+
+    const slotWidth = chartWidth / monthlyCashflow.length;
+    const gap = Math.min(2, slotWidth * 0.25);
+    const barWidth = Math.max(4, slotWidth - gap);
+
     return monthlyCashflow.map((month, index) => {
-      const x = (index / denominator) * 100;
-      const value = selector(month);
-      const y = 100 - (value / maxMonthlyCashflow) * 100;
-      return { x: Number(x.toFixed(2)), y: Number(y.toFixed(2)), value };
+      const baseX = chartLeft + index * slotWidth + (slotWidth - barWidth) / 2;
+      const activeHeight = (month.activeValue / maxMonthlyCashflow) * 100;
+      const openHeight = (month.openValue / maxMonthlyCashflow) * 100;
+      const activeY = 100 - activeHeight;
+      const openY = activeY - openHeight;
+
+      return {
+        x: Number(baseX.toFixed(2)),
+        barWidth: Number(barWidth.toFixed(2)),
+        label: month.label,
+        activeHeight: Number(activeHeight.toFixed(2)),
+        activeY: Number(Math.max(activeY, 0).toFixed(2)),
+        openHeight: Number(openHeight.toFixed(2)),
+        openY: Number(Math.max(openY, 0).toFixed(2))
+      };
     });
-  };
-
-  const createSmoothPath = (points: { x: number; y: number }[]) => {
-    if (points.length === 0) return "";
-    if (points.length === 1) return `M 0,${points[0].y} L 100,${points[0].y}`;
-
-    return points.reduce((path, point, index) => {
-      if (index === 0) return `M ${point.x},${point.y}`;
-      const previous = points[index - 1];
-      const controlX = (previous.x + point.x) / 2;
-      return `${path} Q ${controlX},${previous.y} ${point.x},${point.y}`;
-    }, "");
-  };
-
-  const createAreaPath = (points: { x: number; y: number }[]) => {
-    if (points.length === 0) return "";
-    const linePath = createSmoothPath(points);
-    const lastPoint = points[points.length - 1];
-    const firstPoint = points[0];
-    return `${linePath} L ${lastPoint.x},100 L ${firstPoint.x},100 Z`;
-  };
-
-  const openPoints = mapToPoints((month) => month.openValue);
-  const activePoints = mapToPoints((month) => month.activeValue);
+  }, [chartLeft, monthlyCashflow, maxMonthlyCashflow]);
   const totalOpenFlow = monthlyCashflow.reduce((acc, month) => acc + month.openValue, 0);
   const totalActiveFlow = monthlyCashflow.reduce((acc, month) => acc + month.activeValue, 0);
 
@@ -623,26 +626,40 @@ export function Dashboard({
                 })}
               </g>
 
-              <path d={createAreaPath(openPoints)} fill="url(#openArea)" />
-              <path d={createSmoothPath(openPoints)} fill="none" stroke="#6a1b9a" strokeWidth={1.2} />
-
-              <path d={createAreaPath(activePoints)} fill="url(#activeArea)" />
-              <path d={createSmoothPath(activePoints)} fill="none" stroke="#e91e63" strokeWidth={1.2} />
-
-              {monthlyCashflow.map((month, index) => {
-                const x = openPoints[index]?.x ?? 0;
-                return (
+              {barLayout.map((bar, index) => (
+                <g key={`${monthlyCashflow[index].key}-bars`}>
+                  {bar.activeHeight > 0 && (
+                    <rect
+                      x={bar.x}
+                      y={bar.activeY}
+                      width={bar.barWidth}
+                      height={bar.activeHeight}
+                      rx={1.2}
+                      fill="#e91e63"
+                      opacity={0.75}
+                    />
+                  )}
+                  {bar.openHeight > 0 && (
+                    <rect
+                      x={bar.x}
+                      y={bar.openY}
+                      width={bar.barWidth}
+                      height={bar.openHeight}
+                      rx={1.2}
+                      fill="#6a1b9a"
+                      opacity={0.75}
+                    />
+                  )}
                   <text
-                    key={`${month.key}-label`}
-                    x={x}
+                    x={bar.x + bar.barWidth / 2}
                     y={97}
                     className="fill-logica-lilac text-[2.5px] font-semibold"
                     textAnchor="middle"
                   >
-                    {month.label}
+                    {monthlyCashflow[index].label}
                   </text>
-                );
-              })}
+                </g>
+              ))}
             </svg>
 
             {!hasCashflow && (
