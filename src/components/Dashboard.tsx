@@ -243,8 +243,34 @@ export function Dashboard({
   const loanShare = totalDebt ? Math.round((contractedLoanValue / totalDebt) * 100) : 0;
   const consortiumShare = 100 - loanShare;
   const hasCashflow = monthlyCashflow.some((month) => month.total > 0);
-  const totalOpenFlow = monthlyCashflow.reduce((acc, month) => acc + month.openValue, 0);
-  const totalActiveFlow = monthlyCashflow.reduce((acc, month) => acc + month.activeValue, 0);
+
+  const chartLeft = 12;
+  const chartWidth = 88;
+
+  const barLayout = useMemo(() => {
+    if (monthlyCashflow.length === 0) return [] as { x: number; barWidth: number; barHeight: number; y: number; label: string; total: number }[];
+
+    const slotWidth = chartWidth / monthlyCashflow.length;
+    const gap = Math.min(2, slotWidth * 0.25);
+    const barWidth = Math.max(4, slotWidth - gap);
+
+    return monthlyCashflow.map((month, index) => {
+      const baseX = chartLeft + index * slotWidth + (slotWidth - barWidth) / 2;
+      const barHeight = (month.total / maxMonthlyCashflow) * 100;
+      const y = 100 - barHeight;
+
+      return {
+        x: Number(baseX.toFixed(2)),
+        barWidth: Number(barWidth.toFixed(2)),
+        barHeight: Number(barHeight.toFixed(2)),
+        y: Number(Math.max(y, 0).toFixed(2)),
+        label: month.label,
+        total: month.total
+      };
+    });
+  }, [chartLeft, chartWidth, maxMonthlyCashflow, monthlyCashflow]);
+
+  const totalMonthlyFlow = monthlyCashflow.reduce((acc, month) => acc + month.total, 0);
 
   const compositionBreakdown = [
     {
@@ -531,67 +557,76 @@ export function Dashboard({
               <h2 className="text-lg font-semibold text-logica-purple">Fluxo de parcelas</h2>
               <p className="text-xs text-logica-lilac">Linha do tempo dos próximos lançamentos</p>
             </div>
-            <div className="flex flex-wrap items-center gap-2 text-xs font-semibold text-logica-purple">
-              <span className="badge rounded-pill bg-white text-logica-purple shadow-sm">
-                <span className="me-2 inline-block h-2.5 w-2.5 rounded-circle bg-logica-purple" />
-                Em aberto: {formatCurrency(totalOpenFlow)}
-              </span>
-              <span className="badge rounded-pill bg-white text-logica-rose shadow-sm">
-                <span className="me-2 inline-block h-2.5 w-2.5 rounded-circle bg-logica-rose" />
-                Ativo: {formatCurrency(totalActiveFlow)}
-              </span>
-              <span className="badge rounded-pill bg-logica-light-lilac/70 text-logica-purple shadow-inner">
-                Período projetado: 12 meses
-              </span>
+            <div className="flex flex-wrap items-center gap-3 text-xs font-semibold text-logica-purple">
+              <div className="flex items-center gap-2 rounded-full bg-white/80 px-3 py-2 shadow-inner ring-1 ring-logica-light-lilac">
+                <span className="h-2.5 w-2.5 rounded-full bg-logica-purple" /> Total mensal: {formatCurrency(totalMonthlyFlow)}
+              </div>
+              <div className="flex items-center gap-2 rounded-full bg-logica-light-lilac/70 px-3 py-2 shadow-inner">
+                <span className="text-logica-purple">Período</span>
+                <button type="button" className="rounded-full bg-white/80 px-3 py-1 text-logica-purple shadow transition hover:bg-white">12 meses</button>
+                <button type="button" className="rounded-full bg-white/30 px-3 py-1 text-logica-purple/70 ring-1 ring-white/50">6 meses</button>
+              </div>
             </div>
           </div>
+          <div className="relative mt-2 h-80 w-full">
+            <svg viewBox="0 0 100 110" preserveAspectRatio="none" className="h-full w-full">
+              <defs>
+                <linearGradient id="totalBars" x1="0" y1="1" x2="0" y2="0">
+                  <stop offset="0%" stopColor="#6a1b9a" stopOpacity="0.3" />
+                  <stop offset="100%" stopColor="#6a1b9a" stopOpacity="0.9" />
+                </linearGradient>
+              </defs>
 
-          {hasCashflow ? (
-            <div className="d-flex flex-column gap-3">
-              {monthlyCashflow.map((month) => {
-                const openPercent = Math.round((month.openValue / maxMonthlyCashflow) * 100);
-                const activePercent = Math.round((month.activeValue / maxMonthlyCashflow) * 100);
+              <g>
+                {yAxisScale.map((scale, index) => {
+                  const position = (100 / yAxisSteps) * (yAxisSteps - index);
+                  return (
+                    <g key={scale.id}>
+                      <text x="2" y={position - 2} className="fill-logica-lilac text-[2.5px] font-semibold">
+                        {scale.label}
+                      </text>
+                      <line
+                        x1={chartLeft}
+                        x2="100"
+                        y1={position}
+                        y2={position}
+                        className="stroke-logica-light-lilac/60"
+                        strokeWidth={0.4}
+                      />
+                    </g>
+                  );
+                })}
+              </g>
 
+              {barLayout.map((bar, index) => {
+                const barCenter = bar.x + bar.barWidth / 2;
                 return (
-                  <div key={month.key} className="rounded-3 bg-white/80 p-3 shadow-sm ring-1 ring-logica-light-lilac/70">
-                    <div className="d-flex flex-wrap justify-content-between align-items-start gap-2">
-                      <div>
-                        <p className="mb-0 text-sm font-semibold text-logica-purple">{month.label}</p>
-                        <p className="mb-0 text-[11px] text-logica-lilac">Total previsto {formatCurrency(month.total)}</p>
-                      </div>
-                      <div className="text-end text-[11px] font-semibold text-logica-purple">
-                        <div className="text-logica-rose">Ativo {formatCurrency(month.activeValue)}</div>
-                        <div>Em aberto {formatCurrency(month.openValue)}</div>
-                      </div>
-                    </div>
-
-                    <div className="progress mt-3" style={{ height: "1.3rem", backgroundColor: "#f4e7ff" }}>
-                      {openPercent > 0 && (
-                        <div
-                          className="progress-bar"
-                          role="progressbar"
-                          style={{ width: `${openPercent}%`, backgroundColor: "#6a1b9a" }}
-                          aria-valuenow={openPercent}
-                          aria-valuemin={0}
-                          aria-valuemax={100}
-                        >
-                          <span className="small fw-semibold">Em aberto {openPercent}%</span>
-                        </div>
-                      )}
-                      {activePercent > 0 && (
-                        <div
-                          className="progress-bar"
-                          role="progressbar"
-                          style={{ width: `${activePercent}%`, backgroundColor: "#e91e63" }}
-                          aria-valuenow={activePercent}
-                          aria-valuemin={0}
-                          aria-valuemax={100}
-                        >
-                          <span className="small fw-semibold">Ativo {activePercent}%</span>
-                        </div>
-                      )}
-                    </div>
-                  </div>
+                  <g key={`${bar.label}-${index}`}>
+                    <rect
+                      x={bar.x}
+                      y={bar.y}
+                      width={bar.barWidth}
+                      height={bar.barHeight}
+                      rx={1.8}
+                      fill="url(#totalBars)"
+                    />
+                    <text
+                      x={barCenter}
+                      y={Math.max(bar.y - 2, 4)}
+                      className="fill-logica-purple text-[2.6px] font-semibold"
+                      textAnchor="middle"
+                    >
+                      {formatCurrency(bar.total)}
+                    </text>
+                    <text
+                      x={barCenter}
+                      y={105}
+                      className="fill-logica-lilac text-[2.5px] font-semibold"
+                      textAnchor="middle"
+                    >
+                      {bar.label}
+                    </text>
+                  </g>
                 );
               })}
             </div>
