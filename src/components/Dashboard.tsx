@@ -194,6 +194,15 @@ export function Dashboard({
     return totals;
   }, [activeInstallments]);
 
+  const earliestInstallmentMonth = useMemo(() => {
+    if (activeInstallments.length === 0) return null;
+
+    return activeInstallments.reduce<Date | null>((earliest, installment) => {
+      const date = new Date(installment.date);
+      return !earliest || date < earliest ? date : earliest;
+    }, null);
+  }, [activeInstallments]);
+
   const monthlyStart = useMemo(() => {
     const reference = earliestInstallmentMonth ?? new Date();
     const normalized = new Date(reference);
@@ -202,12 +211,14 @@ export function Dashboard({
     return normalized;
   }, [earliestInstallmentMonth]);
 
-  const monthlyCashflow = useMemo(() => {
+  const monthlyParcelSeries = useMemo(() => {
     return Array.from({ length: cashflowMonths }, (_, index) => {
       const monthDate = new Date(monthlyStart);
       monthDate.setMonth(monthlyStart.getMonth() + index);
       const nextMonth = new Date(monthDate);
       nextMonth.setMonth(monthDate.getMonth() + 1);
+
+      const key = `${monthDate.getFullYear()}-${monthDate.getMonth()}`;
 
       let openValue = 0;
       let activeValue = 0;
