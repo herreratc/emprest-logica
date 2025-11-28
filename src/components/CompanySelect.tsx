@@ -17,13 +17,13 @@ export function CompanySelect({
   className = "",
   ariaLabel
 }: CompanySelectProps) {
-  const wrapperClasses = `relative flex items-center gap-2 rounded-full border border-logica-light-lilac/80 bg-white/90 px-3 py-2 shadow-sm ${className}`;
+  const wrapperClasses = `relative flex items-center justify-center gap-2 rounded-full border border-logica-light-lilac/80 bg-white/90 px-3 py-2 shadow-sm ${className}`;
   const selectId = label ? `company-select-${label.replace(/\s+/g, "-").toLowerCase()}` : undefined;
 
   return (
     <div className={wrapperClasses}>
       {label && (
-        <span className="text-[11px] uppercase tracking-wide text-logica-lilac" id={`${selectId}-label`}>
+        <span className="text-center text-[11px] uppercase tracking-wide text-logica-lilac" id={`${selectId}-label`}>
           {label}
         </span>
       )}
@@ -34,7 +34,7 @@ export function CompanySelect({
           aria-label={label ? undefined : ariaLabel ?? "Selecionar empresa"}
           value={value}
           onChange={(event) => onChange(event.target.value as typeof value)}
-          className="peer w-full appearance-none rounded-full bg-transparent px-3 py-2 pr-10 text-sm font-semibold text-logica-purple focus:outline-none focus:ring-2 focus:ring-logica-lilac focus:ring-offset-1"
+          className="peer w-full appearance-none rounded-full bg-transparent px-3 py-2 pr-10 text-center text-sm font-semibold text-logica-purple focus:outline-none focus:ring-2 focus:ring-logica-lilac focus:ring-offset-1"
         >
           <option value="all">Todas as empresas</option>
           {companies.map((company) => (

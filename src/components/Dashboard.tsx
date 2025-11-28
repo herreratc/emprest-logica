@@ -415,8 +415,8 @@ export function Dashboard({
   return (
     <div className="space-y-5 md:space-y-6">
       <header className="flex flex-col gap-3">
-        <div className="flex flex-wrap items-start justify-between gap-4">
-          <div className="space-y-2">
+        <div className="flex flex-wrap items-start gap-4">
+          <div className="flex-1 min-w-[260px] space-y-2">
             <p className="text-xs font-semibold uppercase tracking-wide text-logica-lilac">Visão consolidada</p>
             <span className="sr-only">Empresa selecionada: {companyName}</span>
             <h1 className="text-3xl font-extrabold uppercase tracking-tight text-logica-purple">Dashboard</h1>
@@ -436,7 +436,7 @@ export function Dashboard({
             )}
           </div>
 
-          <div className="flex flex-wrap items-center gap-3 text-sm font-semibold text-logica-purple">
+          <div className="flex flex-1 min-w-[240px] justify-center">
             <CompanySelect
               label="Visualizando"
               value={selectedCompany}
@@ -444,6 +444,8 @@ export function Dashboard({
               companies={companies}
               className="min-w-[240px]"
             />
+          </div>
+          <div className="flex flex-1 min-w-[260px] justify-start lg:justify-end">
             <div className="flex items-center gap-3 rounded-full border border-logica-light-lilac/70 bg-white/80 px-3 py-2 shadow-sm">
               <div className="flex h-10 w-10 items-center justify-center rounded-full bg-gradient-to-br from-logica-purple to-logica-rose text-base font-bold text-white">
                 {userName.slice(0, 2).toUpperCase()}
