@@ -1,5 +1,5 @@
 import { clsx } from "clsx";
-import { useMemo } from "react";
+import { ReactNode, useMemo } from "react";
 import type { Company, Consortium, Installment, Loan } from "../data/mockData";
 import { formatCurrency } from "../utils/formatters";
 import CompanySelect from "./CompanySelect";
@@ -317,6 +317,34 @@ export function Dashboard({
     return end;
   }, []);
 
+  const currentMonthStart = useMemo(() => {
+    const start = new Date();
+    start.setDate(1);
+    start.setHours(0, 0, 0, 0);
+    return start;
+  }, []);
+
+  const currentMonthEnd = useMemo(() => {
+    const end = new Date(currentMonthStart);
+    end.setMonth(currentMonthStart.getMonth() + 1);
+    return end;
+  }, [currentMonthStart]);
+
+  const currentMonthInstallments = useMemo(() => {
+    return activeInstallments.filter((installment) => {
+      const installmentDate = new Date(installment.date);
+      return installmentDate >= currentMonthStart && installmentDate < currentMonthEnd;
+    });
+  }, [activeInstallments, currentMonthEnd, currentMonthStart]);
+
+  const currentMonthLoanTotal = currentMonthInstallments
+    .filter((installment) => installment.contractType === "loan")
+    .reduce((acc, installment) => acc + installment.value, 0);
+
+  const currentMonthConsortiumTotal = currentMonthInstallments
+    .filter((installment) => installment.contractType === "consortium")
+    .reduce((acc, installment) => acc + installment.value, 0);
+
   const periodFilteredInstallments = useMemo(() => {
     return upcomingInstallments.filter((installment) => {
       const installmentDate = new Date(installment.date);
@@ -387,7 +415,7 @@ export function Dashboard({
 
   type SummaryCard = {
     label: string;
-    value: string | number;
+    value: string | number | ReactNode;
     description: string;
     icon: keyof typeof summaryIcons;
     tone: keyof typeof toneStyles;
@@ -407,7 +435,15 @@ export function Dashboard({
     return upcomingInstallments.filter((installment) => normalizeDate(installment.date) === earliestDueTime);
   }, [upcomingInstallments]);
 
-  const nextDueInstallmentsValue = nextDueInstallments.reduce((acc, installment) => acc + installment.value, 0);
+  const renderCardValue = (value: SummaryCard["value"]) => {
+    if (typeof value === "string" || typeof value === "number") {
+      return (
+        <p className="mt-2 break-words text-2xl font-bold leading-snug text-logica-purple sm:text-3xl">{value}</p>
+      );
+    }
+
+    return <div className="mt-2 text-logica-purple">{value}</div>;
+  };
 
   const summaryCards: SummaryCard[] = [
     {
@@ -451,12 +487,23 @@ export function Dashboard({
       trend: { direction: "down", value: "1,4%", caption: "melhora de carteira" }
     },
     {
-      label: "Próximas parcelas",
-      value: formatCurrency(nextDueInstallmentsValue),
-      description: "Próximas parcelas a vencer",
+      label: "Parcelas do mês",
+      value: (
+        <div className="space-y-2 text-left text-sm leading-tight sm:text-base">
+          <div className="flex items-center justify-between gap-3">
+            <span className="text-[11px] uppercase tracking-wide text-logica-lilac">Empréstimos</span>
+            <span className="font-bold text-logica-purple">{formatCurrency(currentMonthLoanTotal)}</span>
+          </div>
+          <div className="flex items-center justify-between gap-3">
+            <span className="text-[11px] uppercase tracking-wide text-logica-lilac">Consórcios</span>
+            <span className="font-bold text-logica-purple">{formatCurrency(currentMonthConsortiumTotal)}</span>
+          </div>
+        </div>
+      ),
+      description: "Soma de parcelas previstas no mês corrente",
       icon: "calendar",
       tone: "purple",
-      trend: { direction: "up", value: "2,9%", caption: "entrada de agenda" }
+      trend: { direction: "up", value: "Mês", caption: "Visão consolidada" }
     }
   ];
 
@@ -532,9 +579,7 @@ export function Dashboard({
                 {summaryIcons[card.icon]}
               </span>
             </div>
-            <p className="mt-2 break-words text-2xl font-bold leading-snug text-logica-purple sm:text-3xl">
-              {card.value}
-            </p>
+            {renderCardValue(card.value)}
             <div className="mt-1 flex items-center gap-2 text-xs font-semibold text-emerald-600">
               <span
                 className={clsx(
