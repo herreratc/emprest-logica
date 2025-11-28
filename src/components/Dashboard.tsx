@@ -203,6 +203,7 @@ export function Dashboard({
 
     earliestDate.setDate(1);
     earliestDate.setHours(0, 0, 0, 0);
+
     return earliestDate;
   }, [activeInstallments]);
 
