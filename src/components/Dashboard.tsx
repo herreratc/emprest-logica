@@ -1,5 +1,5 @@
 import { clsx } from "clsx";
-import { ReactNode, useMemo } from "react";
+import { ReactNode, useMemo, useState } from "react";
 import type { Company, Consortium, Installment, Loan } from "../data/mockData";
 import { formatCurrency } from "../utils/formatters";
 import CompanySelect from "./CompanySelect";
@@ -133,7 +133,7 @@ export function Dashboard({
   isAuthenticated,
   onSignOut
 }: DashboardProps) {
-  const [monthlyChartRange, setMonthlyChartRange] = useState<6 | 12>(12);
+  const [cashflowMonths, setCashflowMonths] = useState<6 | 12>(12);
   const activeLoans = useMemo(() => loans.filter((loan) => loan.status === "ativo"), [loans]);
   const activeConsortiums = useMemo(() => consortiums, [consortiums]);
   const activeInstallments = useMemo(() => {
@@ -194,17 +194,42 @@ export function Dashboard({
     return totals;
   }, [activeInstallments]);
 
-  const monthlyParcelSeries = useMemo(() => {
-    const startMonth = new Date();
-    startMonth.setDate(1);
-    startMonth.setHours(0, 0, 0, 0);
-    startMonth.setMonth(startMonth.getMonth() - (monthlyChartRange - 1));
+  const monthlyStart = useMemo(() => {
+    const reference = earliestInstallmentMonth ?? new Date();
+    const normalized = new Date(reference);
+    normalized.setDate(1);
+    normalized.setHours(0, 0, 0, 0);
+    return normalized;
+  }, [earliestInstallmentMonth]);
 
-    return Array.from({ length: monthlyChartRange }, (_, index) => {
-      const monthDate = new Date(startMonth);
-      monthDate.setMonth(startMonth.getMonth() + index);
-      const key = `${monthDate.getFullYear()}-${monthDate.getMonth()}`;
-      const total = installmentTotalsByMonth.get(key) ?? 0;
+  const monthlyCashflow = useMemo(() => {
+    return Array.from({ length: cashflowMonths }, (_, index) => {
+      const monthDate = new Date(monthlyStart);
+      monthDate.setMonth(monthlyStart.getMonth() + index);
+      const nextMonth = new Date(monthDate);
+      nextMonth.setMonth(monthDate.getMonth() + 1);
+
+      let openValue = 0;
+      let activeValue = 0;
+
+      activeInstallments.forEach((installment) => {
+        const installmentDate = new Date(installment.date);
+        if (installmentDate >= monthDate && installmentDate < nextMonth) {
+          const value = installment.value;
+          if (installment.status === "paga") {
+            activeValue += value;
+            return;
+          }
+
+          if (installmentDate < today || installment.status === "vencida") {
+            openValue += value;
+          } else {
+            activeValue += value;
+          }
+        }
+      });
+
+      const total = openValue + activeValue;
       const label = monthReferenceFormatter.format(monthDate).replace(".", "");
       const capitalized = label.charAt(0).toUpperCase() + label.slice(1);
 
@@ -214,7 +239,7 @@ export function Dashboard({
         total
       };
     });
-  }, [installmentTotalsByMonth, monthlyChartRange]);
+  }, [activeInstallments, cashflowMonths, monthlyStart, today]);
 
   const maxMonthlyParcelTotal = Math.max(1, ...monthlyParcelSeries.map((month) => month.total));
   const loanShare = totalDebt ? Math.round((contractedLoanValue / totalDebt) * 100) : 0;
@@ -597,29 +622,29 @@ export function Dashboard({
                 <span className="text-logica-purple">Período</span>
                 <button
                   type="button"
-                  onClick={() => setMonthlyChartRange(12)}
+                  onClick={() => setCashflowMonths(12)}
                   className={clsx(
-                    "rounded-full px-3 py-1 shadow transition",
-                    monthlyChartRange === 12
-                      ? "bg-white/80 text-logica-purple"
-                      : "bg-white/30 text-logica-purple/70 ring-1 ring-white/50"
+                    "rounded-full px-3 py-1 text-logica-purple shadow transition",
+                    cashflowMonths === 12
+                      ? "bg-white/80"
+                      : "bg-white/30 text-logica-purple/70 ring-1 ring-white/50 hover:bg-white/60"
                   )}
-                  aria-pressed={monthlyChartRange === 12}
+                  aria-pressed={cashflowMonths === 12}
                 >
-                  Últimos 12 meses
+                  12 meses
                 </button>
                 <button
                   type="button"
-                  onClick={() => setMonthlyChartRange(6)}
+                  onClick={() => setCashflowMonths(6)}
                   className={clsx(
-                    "rounded-full px-3 py-1 shadow transition",
-                    monthlyChartRange === 6
-                      ? "bg-white/80 text-logica-purple"
-                      : "bg-white/30 text-logica-purple/70 ring-1 ring-white/50"
+                    "rounded-full px-3 py-1 text-logica-purple shadow transition",
+                    cashflowMonths === 6
+                      ? "bg-white/80"
+                      : "bg-white/30 text-logica-purple/70 ring-1 ring-white/50 hover:bg-white/60"
                   )}
-                  aria-pressed={monthlyChartRange === 6}
+                  aria-pressed={cashflowMonths === 6}
                 >
-                  Últimos 6 meses
+                  6 meses
                 </button>
               </div>
             </div>
