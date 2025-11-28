@@ -320,6 +320,23 @@ export function Dashboard({
     });
   }, [chartLeft, chartWidth, maxMonthlyParcelTotal, monthlyParcelSeries]);
 
+  const lineLayout = useMemo(() => {
+    if (barLayout.length === 0)
+      return [] as { x: number; y: number; label: string; total: number }[];
+
+    return barLayout.map((bar) => ({
+      x: Number((bar.x + bar.width / 2).toFixed(2)),
+      y: Number(bar.y.toFixed(2)),
+      label: bar.label,
+      total: bar.total
+    }));
+  }, [barLayout]);
+
+  const linePath = useMemo(() => {
+    if (lineLayout.length === 0) return "";
+    return lineLayout.map((point, index) => `${index === 0 ? "M" : "L"} ${point.x} ${point.y}`).join(" ");
+  }, [lineLayout]);
+
   const totalMonthlyFlow = monthlyParcelSeries.reduce((acc, month) => acc + month.total, 0);
 
   const compositionBreakdown = [
@@ -710,6 +727,21 @@ export function Dashboard({
                     );
                   })}
                 </g>
+                {lineLayout.length > 0 && linePath && (
+                  <g className="stroke-[#3b71ca] fill-none">
+                    <path d={linePath} strokeWidth={0.8} className="opacity-80" />
+                    {lineLayout.map((point) => (
+                      <circle
+                        key={`point-${point.label}`}
+                        cx={point.x}
+                        cy={point.y}
+                        r={1.6}
+                        className="fill-white stroke-[#3b71ca]"
+                        strokeWidth={0.6}
+                      />
+                    ))}
+                  </g>
+                )}
                 {barLayout.length > 0 && (
                   <>
                     {barLayout.map((bar, index) => (
