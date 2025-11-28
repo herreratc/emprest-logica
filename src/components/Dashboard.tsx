@@ -195,37 +195,52 @@ export function Dashboard({
   }, [activeInstallments]);
 
   const monthlyStart = useMemo(() => {
-    const reference = earliestInstallmentMonth ?? new Date();
-    const normalized = new Date(reference);
+    const normalized = new Date();
     normalized.setDate(1);
     normalized.setHours(0, 0, 0, 0);
-    return normalized;
-  }, [earliestInstallmentMonth]);
 
-  const monthlyCashflow = useMemo(() => {
+    const defaultStart = new Date(normalized);
+    defaultStart.setMonth(normalized.getMonth() - (cashflowMonths - 1));
+
+    if (activeInstallments.length === 0) return defaultStart;
+
+    const earliestMonth = new Date(
+      Math.min(...activeInstallments.map((installment) => new Date(installment.date).getTime()))
+    );
+
+    earliestMonth.setDate(1);
+    earliestMonth.setHours(0, 0, 0, 0);
+
+    return earliestMonth < defaultStart ? earliestMonth : defaultStart;
+  }, [activeInstallments, cashflowMonths]);
+
+  const monthlyParcelSeries = useMemo(() => {
     return Array.from({ length: cashflowMonths }, (_, index) => {
       const monthDate = new Date(monthlyStart);
       monthDate.setMonth(monthlyStart.getMonth() + index);
+
       const nextMonth = new Date(monthDate);
       nextMonth.setMonth(monthDate.getMonth() + 1);
+
+      const key = `${monthDate.getFullYear()}-${monthDate.getMonth()}`;
 
       let openValue = 0;
       let activeValue = 0;
 
       activeInstallments.forEach((installment) => {
         const installmentDate = new Date(installment.date);
-        if (installmentDate >= monthDate && installmentDate < nextMonth) {
-          const value = installment.value;
-          if (installment.status === "paga") {
-            activeValue += value;
-            return;
-          }
+        if (installmentDate < monthDate || installmentDate >= nextMonth) return;
 
-          if (installmentDate < today || installment.status === "vencida") {
-            openValue += value;
-          } else {
-            activeValue += value;
-          }
+        const value = installment.value;
+        if (installment.status === "paga") {
+          activeValue += value;
+          return;
+        }
+
+        if (installmentDate < today || installment.status === "vencida") {
+          openValue += value;
+        } else {
+          activeValue += value;
         }
       });
 
@@ -260,27 +275,54 @@ export function Dashboard({
   );
 
   const barLayout = useMemo(() => {
-    if (monthlyParcelSeries.length === 0) return [] as { x: number; barWidth: number; barHeight: number; y: number; label: string; total: number }[];
+    if (monthlyParcelSeries.length === 0)
+      return [] as {
+        x: number;
+        width: number;
+        y: number;
+        height: number;
+        label: string;
+        total: number;
+      }[];
 
-    const slotWidth = chartWidth / monthlyParcelSeries.length;
-    const gap = Math.min(2, slotWidth * 0.25);
-    const barWidth = Math.max(4, slotWidth - gap);
+    const slotWidth = monthlyParcelSeries.length ? chartWidth / monthlyParcelSeries.length : chartWidth;
+    const defaultBarWidth = Math.min(10, slotWidth * 0.7);
 
     return monthlyParcelSeries.map((month, index) => {
-      const baseX = chartLeft + index * slotWidth + (slotWidth - barWidth) / 2;
-      const barHeight = (month.total / maxMonthlyParcelTotal) * 100;
-      const y = 100 - barHeight;
+      const center =
+        monthlyParcelSeries.length === 1
+          ? chartLeft + chartWidth / 2
+          : chartLeft + slotWidth * index + slotWidth / 2;
+      const height = (month.total / maxMonthlyParcelTotal) * 100;
+      const y = 100 - height;
 
       return {
-        x: Number(baseX.toFixed(2)),
-        barWidth: Number(barWidth.toFixed(2)),
-        barHeight: Number(barHeight.toFixed(2)),
+        x: Number((center - defaultBarWidth / 2).toFixed(2)),
+        width: Number(defaultBarWidth.toFixed(2)),
         y: Number(Math.max(y, 0).toFixed(2)),
+        height: Number(Math.min(height, 100).toFixed(2)),
         label: month.label,
         total: month.total
       };
     });
   }, [chartLeft, chartWidth, maxMonthlyParcelTotal, monthlyParcelSeries]);
+
+  const lineLayout = useMemo(() => {
+    if (barLayout.length === 0)
+      return [] as { x: number; y: number; label: string; total: number }[];
+
+    return barLayout.map((bar) => ({
+      x: Number((bar.x + bar.width / 2).toFixed(2)),
+      y: Number(bar.y.toFixed(2)),
+      label: bar.label,
+      total: bar.total
+    }));
+  }, [barLayout]);
+
+  const linePath = useMemo(() => {
+    if (lineLayout.length === 0) return "";
+    return lineLayout.map((point, index) => `${index === 0 ? "M" : "L"} ${point.x} ${point.y}`).join(" ");
+  }, [lineLayout]);
 
   const totalMonthlyFlow = monthlyParcelSeries.reduce((acc, month) => acc + month.total, 0);
 
@@ -652,13 +694,6 @@ export function Dashboard({
           {barLayout.length > 0 && hasCashflow ? (
             <div className="relative mt-2 h-80 w-full">
               <svg viewBox="0 0 100 110" preserveAspectRatio="none" className="h-full w-full">
-                <defs>
-                  <linearGradient id="totalBars" x1="0" y1="1" x2="0" y2="0">
-                    <stop offset="0%" stopColor="#6a1b9a" stopOpacity="0.3" />
-                    <stop offset="100%" stopColor="#6a1b9a" stopOpacity="0.9" />
-                  </linearGradient>
-                </defs>
-
                 <g>
                   {yAxisScale.map((scale, index) => {
                     const position = (100 / yAxisSteps) * (yAxisSteps - index);
@@ -679,38 +714,53 @@ export function Dashboard({
                     );
                   })}
                 </g>
-
-                {barLayout.map((bar, index) => {
-                  const barCenter = bar.x + bar.barWidth / 2;
-                  return (
-                    <g key={`${bar.label}-${index}`}>
-                      <rect
-                        x={bar.x}
-                        y={bar.y}
-                        width={bar.barWidth}
-                        height={bar.barHeight}
-                        rx={1.8}
-                        fill="url(#totalBars)"
+                {lineLayout.length > 0 && linePath && (
+                  <g className="stroke-[#3b71ca] fill-none">
+                    <path d={linePath} strokeWidth={0.8} className="opacity-80" />
+                    {lineLayout.map((point) => (
+                      <circle
+                        key={`point-${point.label}`}
+                        cx={point.x}
+                        cy={point.y}
+                        r={1.6}
+                        className="fill-white stroke-[#3b71ca]"
+                        strokeWidth={0.6}
                       />
-                      <text
-                        x={barCenter}
-                        y={Math.max(bar.y - 2, 4)}
-                        className="fill-logica-purple text-[2.6px] font-semibold"
-                        textAnchor="middle"
-                      >
-                        {formatCurrency(bar.total)}
-                      </text>
-                      <text
-                        x={barCenter}
-                        y={105}
-                        className="fill-logica-lilac text-[2.5px] font-semibold"
-                        textAnchor="middle"
-                      >
-                        {bar.label}
-                      </text>
-                    </g>
-                  );
-                })}
+                    ))}
+                  </g>
+                )}
+                {barLayout.length > 0 && (
+                  <>
+                    {barLayout.map((bar, index) => (
+                      <g key={`${bar.label}-${index}`}>
+                        <rect
+                          x={bar.x}
+                          y={bar.y}
+                          width={bar.width}
+                          height={bar.height}
+                          rx={1.5}
+                          className="fill-[#3b71ca]"
+                        />
+                        <text
+                          x={bar.x + bar.width / 2}
+                          y={Math.max(bar.y - 2, 4)}
+                          className="fill-logica-purple text-[2.6px] font-semibold"
+                          textAnchor="middle"
+                        >
+                          {formatCurrency(bar.total)}
+                        </text>
+                        <text
+                          x={bar.x + bar.width / 2}
+                          y={105}
+                          className="fill-logica-lilac text-[2.5px] font-semibold"
+                          textAnchor="middle"
+                        >
+                          {bar.label}
+                        </text>
+                      </g>
+                    ))}
+                  </>
+                )}
               </svg>
             </div>
           ) : (
