@@ -194,6 +194,15 @@ export function Dashboard({
     return totals;
   }, [activeInstallments]);
 
+  const earliestInstallmentMonth = useMemo(() => {
+    if (activeInstallments.length === 0) return null;
+
+    return activeInstallments.reduce<Date | null>((earliest, installment) => {
+      const date = new Date(installment.date);
+      return !earliest || date < earliest ? date : earliest;
+    }, null);
+  }, [activeInstallments]);
+
   const monthlyStart = useMemo(() => {
     const normalized = new Date();
     normalized.setDate(1);
@@ -288,6 +297,23 @@ export function Dashboard({
         width: Number(defaultBarWidth.toFixed(2)),
         y: Number(Math.max(y, 0).toFixed(2)),
         height: Number(Math.min(height, 100).toFixed(2)),
+  const lineLayout = useMemo(() => {
+    if (monthlyParcelSeries.length === 0)
+      return [] as { x: number; y: number; label: string; total: number }[];
+
+    const slotWidth =
+      monthlyParcelSeries.length > 1 ? chartWidth / (monthlyParcelSeries.length - 1) : 0;
+
+    return monthlyParcelSeries.map((month, index) => {
+      const baseX =
+        monthlyParcelSeries.length === 1
+          ? chartLeft + chartWidth / 2
+          : chartLeft + index * slotWidth;
+      const pointY = 100 - (month.total / maxMonthlyParcelTotal) * 100;
+
+      return {
+        x: Number(baseX.toFixed(2)),
+        y: Number(Math.max(pointY, 0).toFixed(2)),
         label: month.label,
         total: month.total
       };
@@ -661,7 +687,7 @@ export function Dashboard({
               </div>
             </div>
           </div>
-          {barLayout.length > 0 && hasCashflow ? (
+          {lineLayout.length > 0 && hasCashflow ? (
             <div className="relative mt-2 h-80 w-full">
               <svg viewBox="0 0 100 110" preserveAspectRatio="none" className="h-full w-full">
                 <g>
@@ -706,11 +732,35 @@ export function Dashboard({
                         </text>
                         <text
                           x={bar.x + bar.width / 2}
+                {lineLayout.length > 0 && (
+                  <>
+                    <polyline
+                      fill="none"
+                      stroke="#6a1b9a"
+                      strokeWidth={1.2}
+                      strokeLinecap="round"
+                      strokeLinejoin="round"
+                      points={lineLayout.map((point) => `${point.x},${point.y}`).join(" ")}
+                    />
+                    {lineLayout.map((point, index) => (
+                      <g key={`${point.label}-${index}`}>
+                        <circle cx={point.x} cy={point.y} r={1.6} fill="#6a1b9a" />
+                        <text
+                          x={point.x}
+                          y={Math.max(point.y - 2.5, 4)}
+                          className="fill-logica-purple text-[2.6px] font-semibold"
+                          textAnchor="middle"
+                        >
+                          {formatCurrency(point.total)}
+                        </text>
+                        <text
+                          x={point.x}
                           y={105}
                           className="fill-logica-lilac text-[2.5px] font-semibold"
                           textAnchor="middle"
                         >
                           {bar.label}
+                          {point.label}
                         </text>
                       </g>
                     ))}
