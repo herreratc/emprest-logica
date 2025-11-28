@@ -1,5 +1,5 @@
 import { clsx } from "clsx";
-import { useMemo } from "react";
+import { useMemo, useState } from "react";
 import type { Company, Consortium, Installment, Loan } from "../data/mockData";
 import { formatCurrency } from "../utils/formatters";
 import CompanySelect from "./CompanySelect";
@@ -133,6 +133,7 @@ export function Dashboard({
   isAuthenticated,
   onSignOut
 }: DashboardProps) {
+  const [monthlyChartRange, setMonthlyChartRange] = useState<6 | 12>(12);
   const activeLoans = useMemo(() => loans.filter((loan) => loan.status === "ativo"), [loans]);
   const activeConsortiums = useMemo(() => consortiums, [consortiums]);
   const activeInstallments = useMemo(() => {
@@ -182,67 +183,43 @@ export function Dashboard({
     return highest;
   }, null);
 
-  const earliestInstallmentMonth = useMemo(() => {
-    if (activeInstallments.length === 0) return null;
-    const ordered = [...activeInstallments].sort(
-      (a, b) => new Date(a.date).getTime() - new Date(b.date).getTime()
-    );
-    return new Date(ordered[0].date);
+  const installmentTotalsByMonth = useMemo(() => {
+    const totals = new Map<string, number>();
+    activeInstallments.forEach((installment) => {
+      const date = new Date(installment.date);
+      const key = `${date.getFullYear()}-${date.getMonth()}`;
+      const currentTotal = totals.get(key) ?? 0;
+      totals.set(key, currentTotal + installment.value);
+    });
+    return totals;
   }, [activeInstallments]);
 
-  const monthlyStart = useMemo(() => {
-    const reference = earliestInstallmentMonth ?? new Date();
-    const normalized = new Date(reference);
-    normalized.setDate(1);
-    normalized.setHours(0, 0, 0, 0);
-    return normalized;
-  }, [earliestInstallmentMonth]);
+  const monthlyParcelSeries = useMemo(() => {
+    const startMonth = new Date();
+    startMonth.setDate(1);
+    startMonth.setHours(0, 0, 0, 0);
+    startMonth.setMonth(startMonth.getMonth() - (monthlyChartRange - 1));
 
-  const monthlyCashflow = useMemo(() => {
-    return Array.from({ length: 12 }, (_, index) => {
-      const monthDate = new Date(monthlyStart);
-      monthDate.setMonth(monthlyStart.getMonth() + index);
-      const nextMonth = new Date(monthDate);
-      nextMonth.setMonth(monthDate.getMonth() + 1);
-
-      let openValue = 0;
-      let activeValue = 0;
-
-      activeInstallments.forEach((installment) => {
-        const installmentDate = new Date(installment.date);
-        if (installmentDate >= monthDate && installmentDate < nextMonth) {
-          const value = installment.value;
-          if (installment.status === "paga") {
-            activeValue += value;
-            return;
-          }
-
-          if (installmentDate < today || installment.status === "vencida") {
-            openValue += value;
-          } else {
-            activeValue += value;
-          }
-        }
-      });
-
-      const total = openValue + activeValue;
+    return Array.from({ length: monthlyChartRange }, (_, index) => {
+      const monthDate = new Date(startMonth);
+      monthDate.setMonth(startMonth.getMonth() + index);
+      const key = `${monthDate.getFullYear()}-${monthDate.getMonth()}`;
+      const total = installmentTotalsByMonth.get(key) ?? 0;
       const label = monthReferenceFormatter.format(monthDate).replace(".", "");
       const capitalized = label.charAt(0).toUpperCase() + label.slice(1);
 
       return {
-        key: `${monthDate.getFullYear()}-${monthDate.getMonth()}`,
-        label: `${capitalized} ${monthDate.getFullYear()}`,
-        openValue,
-        activeValue,
+        key,
+        label: `${capitalized}/${monthDate.getFullYear()}`,
         total
       };
     });
-  }, [activeInstallments, monthlyStart, today]);
+  }, [installmentTotalsByMonth, monthlyChartRange]);
 
-  const maxMonthlyCashflow = Math.max(1, ...monthlyCashflow.map((month) => month.total));
+  const maxMonthlyParcelTotal = Math.max(1, ...monthlyParcelSeries.map((month) => month.total));
   const loanShare = totalDebt ? Math.round((contractedLoanValue / totalDebt) * 100) : 0;
   const consortiumShare = 100 - loanShare;
-  const hasCashflow = monthlyCashflow.some((month) => month.total > 0);
+  const hasCashflow = monthlyParcelSeries.some((month) => month.total > 0);
 
   const chartLeft = 12;
   const chartWidth = 88;
@@ -252,21 +229,21 @@ export function Dashboard({
     () =>
       Array.from({ length: yAxisSteps + 1 }, (_, index) => ({
         id: `y-${index}`,
-        label: formatCurrency(Math.round((maxMonthlyCashflow / yAxisSteps) * index))
+        label: formatCurrency(Math.round((maxMonthlyParcelTotal / yAxisSteps) * index))
       })),
-    [maxMonthlyCashflow]
+    [maxMonthlyParcelTotal]
   );
 
   const barLayout = useMemo(() => {
-    if (monthlyCashflow.length === 0) return [] as { x: number; barWidth: number; barHeight: number; y: number; label: string; total: number }[];
+    if (monthlyParcelSeries.length === 0) return [] as { x: number; barWidth: number; barHeight: number; y: number; label: string; total: number }[];
 
-    const slotWidth = chartWidth / monthlyCashflow.length;
+    const slotWidth = chartWidth / monthlyParcelSeries.length;
     const gap = Math.min(2, slotWidth * 0.25);
     const barWidth = Math.max(4, slotWidth - gap);
 
-    return monthlyCashflow.map((month, index) => {
+    return monthlyParcelSeries.map((month, index) => {
       const baseX = chartLeft + index * slotWidth + (slotWidth - barWidth) / 2;
-      const barHeight = (month.total / maxMonthlyCashflow) * 100;
+      const barHeight = (month.total / maxMonthlyParcelTotal) * 100;
       const y = 100 - barHeight;
 
       return {
@@ -278,9 +255,9 @@ export function Dashboard({
         total: month.total
       };
     });
-  }, [chartLeft, chartWidth, maxMonthlyCashflow, monthlyCashflow]);
+  }, [chartLeft, chartWidth, maxMonthlyParcelTotal, monthlyParcelSeries]);
 
-  const totalMonthlyFlow = monthlyCashflow.reduce((acc, month) => acc + month.total, 0);
+  const totalMonthlyFlow = monthlyParcelSeries.reduce((acc, month) => acc + month.total, 0);
 
   const compositionBreakdown = [
     {
@@ -564,21 +541,45 @@ export function Dashboard({
         <div className={`${cardBaseClass} border-logica-purple/25`}>
           <div className="mb-4 flex flex-wrap items-start justify-between gap-3">
             <div>
-              <h2 className="text-lg font-semibold text-logica-purple">Fluxo de parcelas</h2>
-              <p className="text-xs text-logica-lilac">Linha do tempo dos próximos lançamentos</p>
+              <h2 className="text-lg font-semibold text-logica-purple">Totais mensais de parcelas</h2>
+              <p className="text-xs text-logica-lilac">Soma das parcelas registradas por mês, filtrando 6 ou 12 meses</p>
             </div>
             <div className="flex flex-wrap items-center gap-3 text-xs font-semibold text-logica-purple">
               <div className="flex items-center gap-2 rounded-full bg-white/80 px-3 py-2 shadow-inner ring-1 ring-logica-light-lilac">
-                <span className="h-2.5 w-2.5 rounded-full bg-logica-purple" /> Total mensal: {formatCurrency(totalMonthlyFlow)}
+                <span className="h-2.5 w-2.5 rounded-full bg-logica-purple" /> Total no período: {formatCurrency(totalMonthlyFlow)}
               </div>
-              <div className="flex items-center gap-2 rounded-full bg-logica-light-lilac/70 px-3 py-2 shadow-inner">
+              <div className="flex flex-wrap items-center gap-3 text-xs font-semibold text-logica-purple">
                 <span className="text-logica-purple">Período</span>
-                <button type="button" className="rounded-full bg-white/80 px-3 py-1 text-logica-purple shadow transition hover:bg-white">12 meses</button>
-                <button type="button" className="rounded-full bg-white/30 px-3 py-1 text-logica-purple/70 ring-1 ring-white/50">6 meses</button>
+                <button
+                  type="button"
+                  onClick={() => setMonthlyChartRange(12)}
+                  className={clsx(
+                    "rounded-full px-3 py-1 shadow transition",
+                    monthlyChartRange === 12
+                      ? "bg-white/80 text-logica-purple"
+                      : "bg-white/30 text-logica-purple/70 ring-1 ring-white/50"
+                  )}
+                  aria-pressed={monthlyChartRange === 12}
+                >
+                  Últimos 12 meses
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setMonthlyChartRange(6)}
+                  className={clsx(
+                    "rounded-full px-3 py-1 shadow transition",
+                    monthlyChartRange === 6
+                      ? "bg-white/80 text-logica-purple"
+                      : "bg-white/30 text-logica-purple/70 ring-1 ring-white/50"
+                  )}
+                  aria-pressed={monthlyChartRange === 6}
+                >
+                  Últimos 6 meses
+                </button>
               </div>
             </div>
           </div>
-          {barLayout.length > 0 ? (
+          {barLayout.length > 0 && hasCashflow ? (
             <div className="relative mt-2 h-80 w-full">
               <svg viewBox="0 0 100 110" preserveAspectRatio="none" className="h-full w-full">
                 <defs>
@@ -644,7 +645,7 @@ export function Dashboard({
             </div>
           ) : (
             <div className="alert alert-light text-[11px] font-semibold text-logica-lilac" role="alert">
-              Sem lançamentos no período selecionado
+              Sem parcelas para o período selecionado
             </div>
           )}
         </div>
