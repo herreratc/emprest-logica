@@ -197,19 +197,27 @@ export function Dashboard({
   const earliestInstallmentMonth = useMemo(() => {
     if (activeInstallments.length === 0) return null;
 
-    return activeInstallments.reduce<Date | null>((earliest, installment) => {
-      const date = new Date(installment.date);
-      return !earliest || date < earliest ? date : earliest;
-    }, null);
+    const earliestDate = new Date(
+      Math.min(...activeInstallments.map((installment) => new Date(installment.date).getTime()))
+    );
+
+    earliestDate.setDate(1);
+    earliestDate.setHours(0, 0, 0, 0);
+    return earliestDate;
   }, [activeInstallments]);
 
   const monthlyStart = useMemo(() => {
     const normalized = new Date();
     normalized.setDate(1);
     normalized.setHours(0, 0, 0, 0);
-    normalized.setMonth(normalized.getMonth() - (cashflowMonths - 1));
-    return normalized;
-  }, [cashflowMonths]);
+
+    const defaultStart = new Date(normalized);
+    defaultStart.setMonth(normalized.getMonth() - (cashflowMonths - 1));
+
+    if (!earliestInstallmentMonth) return defaultStart;
+
+    return earliestInstallmentMonth < defaultStart ? earliestInstallmentMonth : defaultStart;
+  }, [cashflowMonths, earliestInstallmentMonth]);
 
   const monthlyParcelSeries = useMemo(() => {
     return Array.from({ length: cashflowMonths }, (_, index) => {
