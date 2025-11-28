@@ -204,12 +204,12 @@ export function Dashboard({
   }, [activeInstallments]);
 
   const monthlyStart = useMemo(() => {
-    const reference = earliestInstallmentMonth ?? new Date();
-    const normalized = new Date(reference);
+    const normalized = new Date();
     normalized.setDate(1);
     normalized.setHours(0, 0, 0, 0);
+    normalized.setMonth(normalized.getMonth() - (cashflowMonths - 1));
     return normalized;
-  }, [earliestInstallmentMonth]);
+  }, [cashflowMonths]);
 
   const monthlyParcelSeries = useMemo(() => {
     return Array.from({ length: cashflowMonths }, (_, index) => {
