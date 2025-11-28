@@ -20,7 +20,7 @@ const monthReferenceFormatter = new Intl.DateTimeFormat("pt-BR", {
 });
 
 const cardBaseClass =
-  "rounded-3xl border border-white/60 bg-white/90 p-5 shadow-[0_18px_40px_rgba(106,27,154,0.08)] backdrop-blur-sm transition hover:-translate-y-0.5 hover:shadow-[0_22px_60px_rgba(233,30,99,0.12)]";
+  "rounded-3xl border border-white/60 bg-white/90 p-4 shadow-[0_18px_40px_rgba(106,27,154,0.08)] backdrop-blur-sm transition hover:-translate-y-0.5 hover:shadow-[0_22px_60px_rgba(233,30,99,0.12)]";
 
 const iconClass = "h-5 w-5";
 
@@ -521,7 +521,7 @@ export function Dashboard({
         </div>
       </header>
 
-      <section className="grid gap-4 md:grid-cols-2 xl:grid-cols-3">
+      <section className="grid gap-3 md:grid-cols-2 xl:grid-cols-3">
         {summaryCards.map((card) => (
           <div key={card.label} className={`${cardBaseClass} ${toneStyles[card.tone].card}`}>
             <div className="flex items-center justify-between">
