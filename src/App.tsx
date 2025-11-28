@@ -2,6 +2,7 @@ import { useMemo, useState } from "react";
 import { AuthProvider, useAuth } from "./auth/AuthProvider";
 import { Sidebar } from "./components/Sidebar";
 import { Dashboard } from "./components/Dashboard";
+import { ErrorBoundary } from "./components/ErrorBoundary";
 import { CompaniesView } from "./components/CompaniesView";
 import { LoansView } from "./components/LoansView";
 import { ConsortiumsView } from "./components/ConsortiumsView";
@@ -174,17 +175,19 @@ function AppContent() {
           </div>
         )}
         {view === "dashboard" && (
-          <Dashboard
-            companies={companies}
-            selectedCompany={selectedCompany}
-            onSelectCompany={setSelectedCompany}
-            loans={filteredLoans}
-            consortiums={filteredConsortiums}
-            installments={filteredInstallments}
-            userName={displayName}
-            isAuthenticated={!!user}
-            onSignOut={user ? handleSignOut : undefined}
-          />
+          <ErrorBoundary>
+            <Dashboard
+              companies={companies}
+              selectedCompany={selectedCompany}
+              onSelectCompany={setSelectedCompany}
+              loans={filteredLoans}
+              consortiums={filteredConsortiums}
+              installments={filteredInstallments}
+              userName={displayName}
+              isAuthenticated={!!user}
+              onSignOut={user ? handleSignOut : undefined}
+            />
+          </ErrorBoundary>
         )}
         {view === "companies" && (
           <CompaniesView
