@@ -194,6 +194,18 @@ export function Dashboard({
     return totals;
   }, [activeInstallments]);
 
+  const earliestInstallmentMonth = useMemo(() => {
+    if (activeInstallments.length === 0) return null;
+
+    const earliestDate = new Date(
+      Math.min(...activeInstallments.map((installment) => new Date(installment.date).getTime()))
+    );
+
+    earliestDate.setDate(1);
+    earliestDate.setHours(0, 0, 0, 0);
+    return earliestDate;
+  }, [activeInstallments]);
+
   const monthlyStart = useMemo(() => {
     const normalized = new Date();
     normalized.setDate(1);
@@ -202,17 +214,10 @@ export function Dashboard({
     const defaultStart = new Date(normalized);
     defaultStart.setMonth(normalized.getMonth() - (cashflowMonths - 1));
 
-    if (activeInstallments.length === 0) return defaultStart;
+    if (!earliestInstallmentMonth) return defaultStart;
 
-    const earliestDate = new Date(
-      Math.min(...activeInstallments.map((installment) => new Date(installment.date).getTime()))
-    );
-
-    earliestDate.setDate(1);
-    earliestDate.setHours(0, 0, 0, 0);
-
-    return earliestDate < defaultStart ? earliestDate : defaultStart;
-  }, [activeInstallments, cashflowMonths]);
+    return earliestInstallmentMonth < defaultStart ? earliestInstallmentMonth : defaultStart;
+  }, [cashflowMonths, earliestInstallmentMonth]);
 
   const monthlyParcelSeries = useMemo(() => {
     return Array.from({ length: cashflowMonths }, (_, index) => {
@@ -674,7 +679,7 @@ export function Dashboard({
               </div>
             </div>
           </div>
-          {barLayout.length > 0 && hasCashflow ? (
+          {lineLayout.length > 0 && hasCashflow ? (
             <div className="relative mt-2 h-80 w-full">
               <svg viewBox="0 0 100 110" preserveAspectRatio="none" className="h-full w-full">
                 <g>
