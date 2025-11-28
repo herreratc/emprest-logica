@@ -245,9 +245,23 @@ const mapConsortiumToDb = (input: UpsertConsortiumInput): Record<string, unknown
   return payload;
 };
 
+const normalizeInstallmentContractType = (type: DbInstallment["contract_type"]): Installment["contractType"] => {
+  const normalized = type?.toLowerCase();
+
+  if (["consortium", "consorcio", "consórcio"].includes(normalized)) {
+    return "consortium";
+  }
+
+  if (["loan", "emprestimo", "empréstimo"].includes(normalized)) {
+    return "loan";
+  }
+
+  return type as Installment["contractType"];
+};
+
 const mapInstallmentFromDb = (record: DbInstallment): Installment => ({
   id: record.id,
-  contractType: record.contract_type,
+  contractType: normalizeInstallmentContractType(record.contract_type),
   contractId: record.contract_id,
   sequence: record.sequence ?? 0,
   date: record.date,
