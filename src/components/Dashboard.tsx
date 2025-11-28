@@ -366,12 +366,23 @@ export function Dashboard({
       trend: { direction: "up", value: "1,1%", caption: "crescimento orgânico" }
     },
     {
-      label: "Total de empréstimos contratado",
-      value: formatCurrency(contractedLoanValue),
-      description: "Valor bruto dos contratos",
-      icon: "cash",
-      tone: "rose",
-      trend: { direction: "down", value: "0,8%", caption: "queda com amortizações" }
+      label: "Parcelas do mês",
+      value: (
+        <div className="space-y-2 text-left text-sm leading-tight sm:text-base">
+          <div className="flex items-center justify-between gap-3">
+            <span className="text-[11px] uppercase tracking-wide text-logica-lilac">Empréstimos</span>
+            <span className="font-bold text-logica-purple">{formatCurrency(currentMonthLoanTotal)}</span>
+          </div>
+          <div className="flex items-center justify-between gap-3">
+            <span className="text-[11px] uppercase tracking-wide text-logica-lilac">Consórcios</span>
+            <span className="font-bold text-logica-purple">{formatCurrency(currentMonthConsortiumTotal)}</span>
+          </div>
+        </div>
+      ),
+      description: "Soma de parcelas previstas no mês corrente",
+      icon: "calendar",
+      tone: "purple",
+      trend: { direction: "up", value: "Mês", caption: "Visão consolidada" }
     },
     {
       label: "Total de consórcio contratado",
@@ -390,23 +401,12 @@ export function Dashboard({
       trend: { direction: "down", value: "1,4%", caption: "melhora de carteira" }
     },
     {
-      label: "Parcelas do mês",
-      value: (
-        <div className="space-y-2 text-left text-sm leading-tight sm:text-base">
-          <div className="flex items-center justify-between gap-3">
-            <span className="text-[11px] uppercase tracking-wide text-logica-lilac">Empréstimos</span>
-            <span className="font-bold text-logica-purple">{formatCurrency(currentMonthLoanTotal)}</span>
-          </div>
-          <div className="flex items-center justify-between gap-3">
-            <span className="text-[11px] uppercase tracking-wide text-logica-lilac">Consórcios</span>
-            <span className="font-bold text-logica-purple">{formatCurrency(currentMonthConsortiumTotal)}</span>
-          </div>
-        </div>
-      ),
-      description: "Soma de parcelas previstas no mês corrente",
-      icon: "calendar",
-      tone: "purple",
-      trend: { direction: "up", value: "Mês", caption: "Visão consolidada" }
+      label: "Total de empréstimos contratado",
+      value: formatCurrency(contractedLoanValue),
+      description: "Valor bruto dos contratos",
+      icon: "cash",
+      tone: "rose",
+      trend: { direction: "down", value: "0,8%", caption: "queda com amortizações" }
     }
   ];
 
