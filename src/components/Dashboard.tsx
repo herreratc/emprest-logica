@@ -215,10 +215,17 @@ export function Dashboard({
     const defaultStart = new Date(normalized);
     defaultStart.setMonth(normalized.getMonth() - (cashflowMonths - 1));
 
-    if (!earliestInstallmentMonth) return defaultStart;
+    if (activeInstallments.length === 0) return defaultStart;
 
-    return earliestInstallmentMonth < defaultStart ? earliestInstallmentMonth : defaultStart;
-  }, [cashflowMonths, earliestInstallmentMonth]);
+    const earliestMonth = new Date(
+      Math.min(...activeInstallments.map((installment) => new Date(installment.date).getTime()))
+    );
+
+    earliestMonth.setDate(1);
+    earliestMonth.setHours(0, 0, 0, 0);
+
+    return earliestMonth < defaultStart ? earliestMonth : defaultStart;
+  }, [activeInstallments, cashflowMonths]);
 
   const monthlyParcelSeries = useMemo(() => {
     return Array.from({ length: cashflowMonths }, (_, index) => {
