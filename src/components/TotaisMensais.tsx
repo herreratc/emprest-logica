@@ -29,17 +29,35 @@ export function TotaisMensais({ categories, data, height = 380 }: TotaisMensaisP
         height,
         toolbar: { show: false },
         animations: { easing: 'easeinout', speed: 300 },
-        events: {
-          dataPointMouseEnter: (_event, chartContext, config) => {
-            const newColors = buildColors(config.w.globals.series[config.seriesIndex].length, config.dataPointIndex);
-            chartContext.updateOptions({ colors: newColors }, false, false);
-          },
-          dataPointMouseLeave: (_event, chartContext, config) => {
-            const newColors = buildColors(config.w.globals.series[config.seriesIndex].length, null);
-            chartContext.updateOptions({ colors: newColors }, false, false);
+          events: {
+            dataPointMouseEnter: (
+              _event: unknown,
+              chartContext: { updateOptions: (options: ApexOptions, redrawPaths?: boolean, animate?: boolean) => void },
+              config: { w: ApexOptions["chart"]; seriesIndex: number; dataPointIndex: number }
+            ) => {
+              const newColors = buildColors(
+                // @ts-expect-error: Apex types do not expose globals as strongly typed
+                // eslint-disable-next-line @typescript-eslint/no-unsafe-member-access
+                (config.w as any).globals.series[config.seriesIndex].length,
+                config.dataPointIndex
+              );
+              chartContext.updateOptions({ colors: newColors }, false, false);
+            },
+            dataPointMouseLeave: (
+              _event: unknown,
+              chartContext: { updateOptions: (options: ApexOptions, redrawPaths?: boolean, animate?: boolean) => void },
+              config: { w: ApexOptions["chart"]; seriesIndex: number; dataPointIndex: number }
+            ) => {
+              const newColors = buildColors(
+                // @ts-expect-error: Apex types do not expose globals as strongly typed
+                // eslint-disable-next-line @typescript-eslint/no-unsafe-member-access
+                (config.w as any).globals.series[config.seriesIndex].length,
+                null
+              );
+              chartContext.updateOptions({ colors: newColors }, false, false);
+            },
           },
         },
-      },
       plotOptions: {
         bar: {
           distributed: true,
