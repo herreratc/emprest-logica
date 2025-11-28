@@ -195,19 +195,21 @@ export function Dashboard({
   }, [activeInstallments]);
 
   const monthlyStart = useMemo(() => {
-    const reference = earliestInstallmentMonth ?? new Date();
-    const normalized = new Date(reference);
+    const normalized = new Date();
     normalized.setDate(1);
     normalized.setHours(0, 0, 0, 0);
+    normalized.setMonth(normalized.getMonth() - (cashflowMonths - 1));
     return normalized;
-  }, [earliestInstallmentMonth]);
+  }, [cashflowMonths]);
 
-  const monthlyCashflow = useMemo(() => {
+  const monthlyParcelSeries = useMemo(() => {
     return Array.from({ length: cashflowMonths }, (_, index) => {
       const monthDate = new Date(monthlyStart);
       monthDate.setMonth(monthlyStart.getMonth() + index);
       const nextMonth = new Date(monthDate);
       nextMonth.setMonth(monthDate.getMonth() + 1);
+
+      const key = `${monthDate.getFullYear()}-${monthDate.getMonth()}`;
 
       let openValue = 0;
       let activeValue = 0;
@@ -259,23 +261,23 @@ export function Dashboard({
     [maxMonthlyParcelTotal]
   );
 
-  const barLayout = useMemo(() => {
-    if (monthlyParcelSeries.length === 0) return [] as { x: number; barWidth: number; barHeight: number; y: number; label: string; total: number }[];
+  const lineLayout = useMemo(() => {
+    if (monthlyParcelSeries.length === 0)
+      return [] as { x: number; y: number; label: string; total: number }[];
 
-    const slotWidth = chartWidth / monthlyParcelSeries.length;
-    const gap = Math.min(2, slotWidth * 0.25);
-    const barWidth = Math.max(4, slotWidth - gap);
+    const slotWidth =
+      monthlyParcelSeries.length > 1 ? chartWidth / (monthlyParcelSeries.length - 1) : 0;
 
     return monthlyParcelSeries.map((month, index) => {
-      const baseX = chartLeft + index * slotWidth + (slotWidth - barWidth) / 2;
-      const barHeight = (month.total / maxMonthlyParcelTotal) * 100;
-      const y = 100 - barHeight;
+      const baseX =
+        monthlyParcelSeries.length === 1
+          ? chartLeft + chartWidth / 2
+          : chartLeft + index * slotWidth;
+      const pointY = 100 - (month.total / maxMonthlyParcelTotal) * 100;
 
       return {
         x: Number(baseX.toFixed(2)),
-        barWidth: Number(barWidth.toFixed(2)),
-        barHeight: Number(barHeight.toFixed(2)),
-        y: Number(Math.max(y, 0).toFixed(2)),
+        y: Number(Math.max(pointY, 0).toFixed(2)),
         label: month.label,
         total: month.total
       };
@@ -649,16 +651,9 @@ export function Dashboard({
               </div>
             </div>
           </div>
-          {barLayout.length > 0 && hasCashflow ? (
+          {lineLayout.length > 0 && hasCashflow ? (
             <div className="relative mt-2 h-80 w-full">
               <svg viewBox="0 0 100 110" preserveAspectRatio="none" className="h-full w-full">
-                <defs>
-                  <linearGradient id="totalBars" x1="0" y1="1" x2="0" y2="0">
-                    <stop offset="0%" stopColor="#6a1b9a" stopOpacity="0.3" />
-                    <stop offset="100%" stopColor="#6a1b9a" stopOpacity="0.9" />
-                  </linearGradient>
-                </defs>
-
                 <g>
                   {yAxisScale.map((scale, index) => {
                     const position = (100 / yAxisSteps) * (yAxisSteps - index);
@@ -679,38 +674,39 @@ export function Dashboard({
                     );
                   })}
                 </g>
-
-                {barLayout.map((bar, index) => {
-                  const barCenter = bar.x + bar.barWidth / 2;
-                  return (
-                    <g key={`${bar.label}-${index}`}>
-                      <rect
-                        x={bar.x}
-                        y={bar.y}
-                        width={bar.barWidth}
-                        height={bar.barHeight}
-                        rx={1.8}
-                        fill="url(#totalBars)"
-                      />
-                      <text
-                        x={barCenter}
-                        y={Math.max(bar.y - 2, 4)}
-                        className="fill-logica-purple text-[2.6px] font-semibold"
-                        textAnchor="middle"
-                      >
-                        {formatCurrency(bar.total)}
-                      </text>
-                      <text
-                        x={barCenter}
-                        y={105}
-                        className="fill-logica-lilac text-[2.5px] font-semibold"
-                        textAnchor="middle"
-                      >
-                        {bar.label}
-                      </text>
-                    </g>
-                  );
-                })}
+                {lineLayout.length > 0 && (
+                  <>
+                    <polyline
+                      fill="none"
+                      stroke="#6a1b9a"
+                      strokeWidth={1.2}
+                      strokeLinecap="round"
+                      strokeLinejoin="round"
+                      points={lineLayout.map((point) => `${point.x},${point.y}`).join(" ")}
+                    />
+                    {lineLayout.map((point, index) => (
+                      <g key={`${point.label}-${index}`}>
+                        <circle cx={point.x} cy={point.y} r={1.6} fill="#6a1b9a" />
+                        <text
+                          x={point.x}
+                          y={Math.max(point.y - 2.5, 4)}
+                          className="fill-logica-purple text-[2.6px] font-semibold"
+                          textAnchor="middle"
+                        >
+                          {formatCurrency(point.total)}
+                        </text>
+                        <text
+                          x={point.x}
+                          y={105}
+                          className="fill-logica-lilac text-[2.5px] font-semibold"
+                          textAnchor="middle"
+                        >
+                          {point.label}
+                        </text>
+                      </g>
+                    ))}
+                  </>
+                )}
               </svg>
             </div>
           ) : (
