@@ -215,6 +215,7 @@ export function Dashboard({
     return Array.from({ length: cashflowMonths }, (_, index) => {
       const monthDate = new Date(monthlyStart);
       monthDate.setMonth(monthlyStart.getMonth() + index);
+
       const nextMonth = new Date(monthDate);
       nextMonth.setMonth(monthDate.getMonth() + 1);
 
@@ -225,18 +226,18 @@ export function Dashboard({
 
       activeInstallments.forEach((installment) => {
         const installmentDate = new Date(installment.date);
-        if (installmentDate >= monthDate && installmentDate < nextMonth) {
-          const value = installment.value;
-          if (installment.status === "paga") {
-            activeValue += value;
-            return;
-          }
+        if (installmentDate < monthDate || installmentDate >= nextMonth) return;
 
-          if (installmentDate < today || installment.status === "vencida") {
-            openValue += value;
-          } else {
-            activeValue += value;
-          }
+        const value = installment.value;
+        if (installment.status === "paga") {
+          activeValue += value;
+          return;
+        }
+
+        if (installmentDate < today || installment.status === "vencida") {
+          openValue += value;
+        } else {
+          activeValue += value;
         }
       });
 
@@ -297,23 +298,6 @@ export function Dashboard({
         width: Number(defaultBarWidth.toFixed(2)),
         y: Number(Math.max(y, 0).toFixed(2)),
         height: Number(Math.min(height, 100).toFixed(2)),
-  const lineLayout = useMemo(() => {
-    if (monthlyParcelSeries.length === 0)
-      return [] as { x: number; y: number; label: string; total: number }[];
-
-    const slotWidth =
-      monthlyParcelSeries.length > 1 ? chartWidth / (monthlyParcelSeries.length - 1) : 0;
-
-    return monthlyParcelSeries.map((month, index) => {
-      const baseX =
-        monthlyParcelSeries.length === 1
-          ? chartLeft + chartWidth / 2
-          : chartLeft + index * slotWidth;
-      const pointY = 100 - (month.total / maxMonthlyParcelTotal) * 100;
-
-      return {
-        x: Number(baseX.toFixed(2)),
-        y: Number(Math.max(pointY, 0).toFixed(2)),
         label: month.label,
         total: month.total
       };
@@ -732,35 +716,11 @@ export function Dashboard({
                         </text>
                         <text
                           x={bar.x + bar.width / 2}
-                {lineLayout.length > 0 && (
-                  <>
-                    <polyline
-                      fill="none"
-                      stroke="#6a1b9a"
-                      strokeWidth={1.2}
-                      strokeLinecap="round"
-                      strokeLinejoin="round"
-                      points={lineLayout.map((point) => `${point.x},${point.y}`).join(" ")}
-                    />
-                    {lineLayout.map((point, index) => (
-                      <g key={`${point.label}-${index}`}>
-                        <circle cx={point.x} cy={point.y} r={1.6} fill="#6a1b9a" />
-                        <text
-                          x={point.x}
-                          y={Math.max(point.y - 2.5, 4)}
-                          className="fill-logica-purple text-[2.6px] font-semibold"
-                          textAnchor="middle"
-                        >
-                          {formatCurrency(point.total)}
-                        </text>
-                        <text
-                          x={point.x}
                           y={105}
                           className="fill-logica-lilac text-[2.5px] font-semibold"
                           textAnchor="middle"
                         >
                           {bar.label}
-                          {point.label}
                         </text>
                       </g>
                     ))}
