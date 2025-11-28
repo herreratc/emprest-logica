@@ -270,6 +270,33 @@ export function Dashboard({
     [maxMonthlyParcelTotal]
   );
 
+  const barLayout = useMemo(() => {
+    if (monthlyParcelSeries.length === 0)
+      return [] as {
+        x: number;
+        width: number;
+        y: number;
+        height: number;
+        label: string;
+        total: number;
+      }[];
+
+    const slotWidth = monthlyParcelSeries.length ? chartWidth / monthlyParcelSeries.length : chartWidth;
+    const defaultBarWidth = Math.min(10, slotWidth * 0.7);
+
+    return monthlyParcelSeries.map((month, index) => {
+      const center =
+        monthlyParcelSeries.length === 1
+          ? chartLeft + chartWidth / 2
+          : chartLeft + slotWidth * index + slotWidth / 2;
+      const height = (month.total / maxMonthlyParcelTotal) * 100;
+      const y = 100 - height;
+
+      return {
+        x: Number((center - defaultBarWidth / 2).toFixed(2)),
+        width: Number(defaultBarWidth.toFixed(2)),
+        y: Number(Math.max(y, 0).toFixed(2)),
+        height: Number(Math.min(height, 100).toFixed(2)),
   const lineLayout = useMemo(() => {
     if (monthlyParcelSeries.length === 0)
       return [] as { x: number; y: number; label: string; total: number }[];
@@ -683,6 +710,28 @@ export function Dashboard({
                     );
                   })}
                 </g>
+                {barLayout.length > 0 && (
+                  <>
+                    {barLayout.map((bar, index) => (
+                      <g key={`${bar.label}-${index}`}>
+                        <rect
+                          x={bar.x}
+                          y={bar.y}
+                          width={bar.width}
+                          height={bar.height}
+                          rx={1.5}
+                          className="fill-[#3b71ca]"
+                        />
+                        <text
+                          x={bar.x + bar.width / 2}
+                          y={Math.max(bar.y - 2, 4)}
+                          className="fill-logica-purple text-[2.6px] font-semibold"
+                          textAnchor="middle"
+                        >
+                          {formatCurrency(bar.total)}
+                        </text>
+                        <text
+                          x={bar.x + bar.width / 2}
                 {lineLayout.length > 0 && (
                   <>
                     <polyline
@@ -710,6 +759,7 @@ export function Dashboard({
                           className="fill-logica-lilac text-[2.5px] font-semibold"
                           textAnchor="middle"
                         >
+                          {bar.label}
                           {point.label}
                         </text>
                       </g>
