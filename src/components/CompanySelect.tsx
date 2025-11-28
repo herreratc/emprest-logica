@@ -17,8 +17,10 @@ export function CompanySelect({
   className = "",
   ariaLabel
 }: CompanySelectProps) {
-  const wrapperClasses = `relative flex items-center justify-center gap-2 rounded-full border border-logica-light-lilac/80 bg-white/90 px-3 py-2 shadow-sm ${className}`;
   const selectId = label ? `company-select-${label.replace(/\s+/g, "-").toLowerCase()}` : undefined;
+  const descriptionId = selectId ? `${selectId}-description` : undefined;
+
+  const wrapperClasses = `relative flex items-center justify-center gap-3 rounded-2xl border border-logica-purple/15 bg-white/95 px-4 py-3 shadow-md shadow-logica-purple/5 transition hover:shadow-lg focus-within:ring-2 focus-within:ring-logica-lilac/70 ${className}`;
 
   return (
     <div className={wrapperClasses}>
@@ -27,14 +29,28 @@ export function CompanySelect({
           {label}
         </span>
       )}
-      <div className="relative">
+      <div className="relative flex-1">
+        <div className="pointer-events-none absolute inset-y-0 left-3 flex items-center text-logica-purple/70">
+          <svg
+            xmlns="http://www.w3.org/2000/svg"
+            className="h-5 w-5"
+            viewBox="0 0 24 24"
+            fill="currentColor"
+            aria-hidden
+          >
+            <path d="M4 5.5A2.5 2.5 0 0 1 6.5 3h3A2.5 2.5 0 0 1 12 5.5V21H4z" />
+            <path d="M13 11h3a2 2 0 0 1 2 2v8h-5z" />
+            <path d="M18 9h2a1 1 0 0 1 1 1v11h-3z" />
+          </svg>
+        </div>
         <select
           id={selectId}
           aria-labelledby={label ? `${selectId}-label` : undefined}
           aria-label={label ? undefined : ariaLabel ?? "Selecionar empresa"}
+          aria-describedby={descriptionId}
           value={value}
           onChange={(event) => onChange(event.target.value as typeof value)}
-          className="peer w-full appearance-none rounded-full bg-transparent px-3 py-2 pr-10 text-center text-sm font-semibold text-logica-purple focus:outline-none focus:ring-2 focus:ring-logica-lilac focus:ring-offset-1"
+          className="peer w-full appearance-none rounded-xl border border-logica-purple/10 bg-white/50 px-10 py-3 pr-12 text-left text-sm font-semibold text-logica-purple shadow-inner focus:border-logica-lilac focus:outline-none"
         >
           <option value="all">Todas as empresas</option>
           {companies.map((company) => (
@@ -59,6 +75,12 @@ export function CompanySelect({
           </svg>
         </div>
       </div>
+      <p
+        id={descriptionId}
+        className="hidden text-[11px] font-semibold uppercase tracking-wide text-logica-purple/80 sm:block"
+      >
+        Clique para trocar a empresa
+      </p>
     </div>
   );
 }
