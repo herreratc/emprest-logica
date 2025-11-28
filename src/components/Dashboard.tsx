@@ -220,12 +220,46 @@ export function Dashboard({
     return end;
   }, []);
 
+  const referenceDateForMonth = useMemo(() => {
+    const today = new Date();
+
+    const hasCurrentMonthInstallment = activeInstallments.some((installment) => {
+      const installmentDate = new Date(installment.date);
+      return (
+        installmentDate.getFullYear() === today.getFullYear() &&
+        installmentDate.getMonth() === today.getMonth()
+      );
+    });
+
+    if (hasCurrentMonthInstallment) {
+      return today;
+    }
+
+    const validInstallmentDates = activeInstallments
+      .map((installment) => new Date(installment.date))
+      .filter((date) => !Number.isNaN(date.getTime()));
+
+    const upcomingDate = [...validInstallmentDates]
+      .filter((date) => date >= today)
+      .sort((a, b) => a.getTime() - b.getTime())[0];
+
+    if (upcomingDate) {
+      return upcomingDate;
+    }
+
+    const latestPastDate = [...validInstallmentDates]
+      .filter((date) => date < today)
+      .sort((a, b) => b.getTime() - a.getTime())[0];
+
+    return latestPastDate ?? today;
+  }, [activeInstallments]);
+
   const currentMonthStart = useMemo(() => {
-    const start = new Date();
+    const start = new Date(referenceDateForMonth);
     start.setDate(1);
     start.setHours(0, 0, 0, 0);
     return start;
-  }, []);
+  }, [referenceDateForMonth]);
 
   const currentMonthEnd = useMemo(() => {
     const end = new Date(currentMonthStart);
