@@ -679,7 +679,7 @@ export function Dashboard({
               </div>
             </div>
           </div>
-          {barLayout.length > 0 && hasCashflow ? (
+          {lineLayout.length > 0 && hasCashflow ? (
             <div className="relative mt-2 h-80 w-full">
               <svg viewBox="0 0 100 110" preserveAspectRatio="none" className="h-full w-full">
                 <g>
