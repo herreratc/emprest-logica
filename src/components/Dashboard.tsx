@@ -150,27 +150,63 @@ export function Dashboard({
     });
   }, [installments, activeLoans, activeConsortiums]);
 
+  const referenceDate = useMemo(() => {
+    const today = new Date();
+
+    const hasCurrentMonthInstallment = activeInstallments.some((installment) => {
+      const installmentDate = new Date(installment.date);
+      return (
+        installmentDate.getFullYear() === today.getFullYear() &&
+        installmentDate.getMonth() === today.getMonth()
+      );
+    });
+
+    if (hasCurrentMonthInstallment) {
+      return today;
+    }
+
+    const validInstallmentDates = activeInstallments
+      .map((installment) => new Date(installment.date))
+      .filter((date) => !Number.isNaN(date.getTime()));
+
+    const upcomingDate = [...validInstallmentDates]
+      .filter((date) => date >= today)
+      .sort((a, b) => a.getTime() - b.getTime())[0];
+
+    if (upcomingDate) {
+      return upcomingDate;
+    }
+
+    const latestPastDate = [...validInstallmentDates]
+      .filter((date) => date < today)
+      .sort((a, b) => b.getTime() - a.getTime())[0];
+
+    return latestPastDate ?? today;
+  }, [activeInstallments]);
+
   const upcomingInstallments = activeInstallments.filter((installment) => installment.status !== "paga");
   const contractedLoanValue = activeLoans.reduce((acc, loan) => acc + loan.totalValue, 0);
   const contractedConsortiumValue = activeConsortiums.reduce((acc, item) => acc + item.creditToReceive, 0);
   const totalDebt = contractedLoanValue + contractedConsortiumValue;
-  const today = new Date();
   const overdueInstallments = upcomingInstallments.filter(
-    (installment) => new Date(installment.date) < today && installment.status === "pendente"
+    (installment) => new Date(installment.date) < referenceDate && installment.status === "pendente"
   );
   const contractCount = activeLoans.length + activeConsortiums.length;
   const averageTicketValue = contractCount ? totalDebt / contractCount : 0;
 
   const upcomingWithin30Days = useMemo(() => {
-    const limitDate = new Date();
+    const limitDate = new Date(referenceDate);
     limitDate.setDate(limitDate.getDate() + 30);
-    return upcomingInstallments.filter((installment) => new Date(installment.date) <= limitDate);
-  }, [upcomingInstallments]);
+    return upcomingInstallments.filter((installment) => {
+      const installmentDate = new Date(installment.date);
+      return installmentDate >= referenceDate && installmentDate <= limitDate;
+    });
+  }, [referenceDate, upcomingInstallments]);
 
   const next30DaysValue = upcomingWithin30Days.reduce((acc, installment) => acc + installment.value, 0);
   const next30DaysCount = upcomingWithin30Days.length;
   const next7DaysCount = upcomingWithin30Days.filter((installment) => {
-    const limit = new Date();
+    const limit = new Date(referenceDate);
     limit.setDate(limit.getDate() + 7);
     return new Date(installment.date) <= limit;
   }).length;
@@ -208,58 +244,24 @@ export function Dashboard({
       : companies.find((company) => company.id === selectedCompany)?.name ?? "Empresa";
 
   const scheduleWindowStart = useMemo(() => {
-    const start = new Date();
+    const start = new Date(referenceDate);
     start.setHours(0, 0, 0, 0);
     return start;
-  }, []);
+  }, [referenceDate]);
 
   const scheduleWindowEnd = useMemo(() => {
-    const end = new Date();
+    const end = new Date(scheduleWindowStart);
     end.setDate(end.getDate() + 30);
     end.setHours(23, 59, 59, 999);
     return end;
-  }, []);
-
-  const referenceDateForMonth = useMemo(() => {
-    const today = new Date();
-
-    const hasCurrentMonthInstallment = activeInstallments.some((installment) => {
-      const installmentDate = new Date(installment.date);
-      return (
-        installmentDate.getFullYear() === today.getFullYear() &&
-        installmentDate.getMonth() === today.getMonth()
-      );
-    });
-
-    if (hasCurrentMonthInstallment) {
-      return today;
-    }
-
-    const validInstallmentDates = activeInstallments
-      .map((installment) => new Date(installment.date))
-      .filter((date) => !Number.isNaN(date.getTime()));
-
-    const upcomingDate = [...validInstallmentDates]
-      .filter((date) => date >= today)
-      .sort((a, b) => a.getTime() - b.getTime())[0];
-
-    if (upcomingDate) {
-      return upcomingDate;
-    }
-
-    const latestPastDate = [...validInstallmentDates]
-      .filter((date) => date < today)
-      .sort((a, b) => b.getTime() - a.getTime())[0];
-
-    return latestPastDate ?? today;
-  }, [activeInstallments]);
+  }, [scheduleWindowStart]);
 
   const currentMonthStart = useMemo(() => {
-    const start = new Date(referenceDateForMonth);
+    const start = new Date(referenceDate);
     start.setDate(1);
     start.setHours(0, 0, 0, 0);
     return start;
-  }, [referenceDateForMonth]);
+  }, [referenceDate]);
 
   const currentMonthEnd = useMemo(() => {
     const end = new Date(currentMonthStart);
