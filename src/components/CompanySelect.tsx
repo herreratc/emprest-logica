@@ -22,11 +22,6 @@ export function CompanySelect({
 
   const wrapperClasses = `relative flex items-center justify-center gap-2 rounded-xl border border-logica-purple/15 bg-white/95 px-3 py-2 shadow shadow-logica-purple/5 transition hover:shadow-md focus-within:ring-2 focus-within:ring-logica-lilac/70 ${className}`;
 
-  const selectedLabel =
-    value === "all"
-      ? "Trocar empresa - exibindo todas"
-      : `Trocar empresa - exibindo ${companies.find((company) => company.id === value)?.name ?? "empresa"}`;
-
   return (
     <div className={wrapperClasses}>
       {label && (
@@ -84,7 +79,6 @@ export function CompanySelect({
         id={descriptionId}
         className="hidden text-[10px] font-semibold uppercase tracking-wide text-logica-purple/80 sm:block"
       >
-        {selectedLabel}
       </p>
     </div>
   );
