@@ -1,5 +1,5 @@
 import { clsx } from "clsx";
-import { ReactNode, useMemo } from "react";
+import { ReactNode, useMemo, useState } from "react";
 import type { Company, Consortium, Installment, Loan } from "../data/mockData";
 import { formatCurrency } from "../utils/formatters";
 import CompanySelect from "./CompanySelect";
@@ -150,27 +150,63 @@ export function Dashboard({
     });
   }, [installments, activeLoans, activeConsortiums]);
 
+  const referenceDate = useMemo(() => {
+    const today = new Date();
+
+    const hasCurrentMonthInstallment = activeInstallments.some((installment) => {
+      const installmentDate = new Date(installment.date);
+      return (
+        installmentDate.getFullYear() === today.getFullYear() &&
+        installmentDate.getMonth() === today.getMonth()
+      );
+    });
+
+    if (hasCurrentMonthInstallment) {
+      return today;
+    }
+
+    const validInstallmentDates = activeInstallments
+      .map((installment) => new Date(installment.date))
+      .filter((date) => !Number.isNaN(date.getTime()));
+
+    const upcomingDate = [...validInstallmentDates]
+      .filter((date) => date >= today)
+      .sort((a, b) => a.getTime() - b.getTime())[0];
+
+    if (upcomingDate) {
+      return upcomingDate;
+    }
+
+    const latestPastDate = [...validInstallmentDates]
+      .filter((date) => date < today)
+      .sort((a, b) => b.getTime() - a.getTime())[0];
+
+    return latestPastDate ?? today;
+  }, [activeInstallments]);
+
   const upcomingInstallments = activeInstallments.filter((installment) => installment.status !== "paga");
   const contractedLoanValue = activeLoans.reduce((acc, loan) => acc + loan.totalValue, 0);
   const contractedConsortiumValue = activeConsortiums.reduce((acc, item) => acc + item.creditToReceive, 0);
   const totalDebt = contractedLoanValue + contractedConsortiumValue;
-  const today = new Date();
   const overdueInstallments = upcomingInstallments.filter(
-    (installment) => new Date(installment.date) < today && installment.status === "pendente"
+    (installment) => new Date(installment.date) < referenceDate && installment.status === "pendente"
   );
   const contractCount = activeLoans.length + activeConsortiums.length;
   const averageTicketValue = contractCount ? totalDebt / contractCount : 0;
 
   const upcomingWithin30Days = useMemo(() => {
-    const limitDate = new Date();
+    const limitDate = new Date(referenceDate);
     limitDate.setDate(limitDate.getDate() + 30);
-    return upcomingInstallments.filter((installment) => new Date(installment.date) <= limitDate);
-  }, [upcomingInstallments]);
+    return upcomingInstallments.filter((installment) => {
+      const installmentDate = new Date(installment.date);
+      return installmentDate >= referenceDate && installmentDate <= limitDate;
+    });
+  }, [referenceDate, upcomingInstallments]);
 
   const next30DaysValue = upcomingWithin30Days.reduce((acc, installment) => acc + installment.value, 0);
   const next30DaysCount = upcomingWithin30Days.length;
   const next7DaysCount = upcomingWithin30Days.filter((installment) => {
-    const limit = new Date();
+    const limit = new Date(referenceDate);
     limit.setDate(limit.getDate() + 7);
     return new Date(installment.date) <= limit;
   }).length;
@@ -207,59 +243,40 @@ export function Dashboard({
       ? "Todas as empresas"
       : companies.find((company) => company.id === selectedCompany)?.name ?? "Empresa";
 
+  const [scheduleView, setScheduleView] = useState<"upcoming" | "paidLast30">("upcoming");
+
   const scheduleWindowStart = useMemo(() => {
-    const start = new Date();
+    const start = new Date(referenceDate);
     start.setHours(0, 0, 0, 0);
     return start;
-  }, []);
+  }, [referenceDate]);
 
   const scheduleWindowEnd = useMemo(() => {
-    const end = new Date();
+    const end = new Date(scheduleWindowStart);
     end.setDate(end.getDate() + 30);
     end.setHours(23, 59, 59, 999);
     return end;
-  }, []);
+  }, [scheduleWindowStart]);
 
-  const referenceDateForMonth = useMemo(() => {
-    const today = new Date();
+  const paidWindowStart = useMemo(() => {
+    const start = new Date(referenceDate);
+    start.setDate(start.getDate() - 30);
+    start.setHours(0, 0, 0, 0);
+    return start;
+  }, [referenceDate]);
 
-    const hasCurrentMonthInstallment = activeInstallments.some((installment) => {
-      const installmentDate = new Date(installment.date);
-      return (
-        installmentDate.getFullYear() === today.getFullYear() &&
-        installmentDate.getMonth() === today.getMonth()
-      );
-    });
-
-    if (hasCurrentMonthInstallment) {
-      return today;
-    }
-
-    const validInstallmentDates = activeInstallments
-      .map((installment) => new Date(installment.date))
-      .filter((date) => !Number.isNaN(date.getTime()));
-
-    const upcomingDate = [...validInstallmentDates]
-      .filter((date) => date >= today)
-      .sort((a, b) => a.getTime() - b.getTime())[0];
-
-    if (upcomingDate) {
-      return upcomingDate;
-    }
-
-    const latestPastDate = [...validInstallmentDates]
-      .filter((date) => date < today)
-      .sort((a, b) => b.getTime() - a.getTime())[0];
-
-    return latestPastDate ?? today;
-  }, [activeInstallments]);
+  const paidWindowEnd = useMemo(() => {
+    const end = new Date(referenceDate);
+    end.setHours(23, 59, 59, 999);
+    return end;
+  }, [referenceDate]);
 
   const currentMonthStart = useMemo(() => {
-    const start = new Date(referenceDateForMonth);
+    const start = new Date(referenceDate);
     start.setDate(1);
     start.setHours(0, 0, 0, 0);
     return start;
-  }, [referenceDateForMonth]);
+  }, [referenceDate]);
 
   const currentMonthEnd = useMemo(() => {
     const end = new Date(currentMonthStart);
@@ -289,7 +306,18 @@ export function Dashboard({
     });
   }, [upcomingInstallments, scheduleWindowEnd, scheduleWindowStart]);
 
-  const scheduleSource = periodFilteredInstallments.length > 0 ? periodFilteredInstallments : upcomingInstallments;
+  const paidLast30Installments = useMemo(() => {
+    return activeInstallments.filter((installment) => {
+      if (installment.status !== "paga") return false;
+      const installmentDate = new Date(installment.date);
+      return installmentDate >= paidWindowStart && installmentDate <= paidWindowEnd;
+    });
+  }, [activeInstallments, paidWindowEnd, paidWindowStart]);
+
+  const scheduleSource = useMemo(() => {
+    if (scheduleView === "paidLast30") return paidLast30Installments;
+    return periodFilteredInstallments.length > 0 ? periodFilteredInstallments : upcomingInstallments;
+  }, [paidLast30Installments, periodFilteredInstallments, scheduleView, upcomingInstallments]);
 
   const nextInstallments = useMemo(() => {
     return [...scheduleSource]
@@ -299,6 +327,12 @@ export function Dashboard({
 
   const schedulePeriodRange = useMemo(() => {
     if (scheduleSource.length === 0) return null;
+
+    if (scheduleView === "paidLast30") {
+      const startLabel = scheduleDateWithYearFormatter.format(paidWindowStart).replace(".", "");
+      const endLabel = scheduleDateWithYearFormatter.format(paidWindowEnd).replace(".", "");
+      return `Pagas nos últimos 30 dias (${startLabel} — ${endLabel})`;
+    }
 
     const startLabel = scheduleDateWithYearFormatter.format(scheduleWindowStart).replace(".", "");
     const endLabel = scheduleDateWithYearFormatter.format(scheduleWindowEnd).replace(".", "");
@@ -315,7 +349,7 @@ export function Dashboard({
       .format(new Date(ordered[ordered.length - 1].date))
       .replace(".", "");
     return `Próximos lançamentos (${firstDate} — ${lastDate})`;
-  }, [periodFilteredInstallments.length, scheduleSource, scheduleWindowEnd, scheduleWindowStart]);
+  }, [paidWindowEnd, paidWindowStart, periodFilteredInstallments.length, scheduleSource, scheduleView, scheduleWindowEnd, scheduleWindowStart]);
 
   const executiveHighlights = [
     {
@@ -549,7 +583,7 @@ export function Dashboard({
           <div className="mb-5 flex flex-wrap items-center justify-between gap-2">
             <div>
               <h2 className="text-lg font-semibold text-logica-purple">Cronograma de pagamentos</h2>
-              <p className="text-xs text-logica-lilac">Próximas parcelas monitoradas</p>
+              <p className="text-xs text-logica-lilac">Próximas parcelas e histórico recente</p>
               {schedulePeriodRange && (
                 <p className="text-[11px] font-semibold text-logica-lilac/90">
                   Período utilizado nos dados: {schedulePeriodRange}
@@ -557,11 +591,41 @@ export function Dashboard({
               )}
             </div>
             <div className="flex flex-wrap items-center gap-2 text-xs font-semibold text-logica-purple">
+              <div className="flex rounded-full bg-white/80 p-1 shadow-inner ring-1 ring-logica-light-lilac/70">
+                <button
+                  type="button"
+                  onClick={() => setScheduleView("upcoming")}
+                  className={clsx(
+                    "rounded-full px-3 py-1 transition",
+                    scheduleView === "upcoming"
+                      ? "bg-logica-purple/90 text-white shadow"
+                      : "text-logica-purple hover:bg-logica-light-lilac/60"
+                  )}
+                >
+                  Próximas
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setScheduleView("paidLast30")}
+                  className={clsx(
+                    "rounded-full px-3 py-1 transition",
+                    scheduleView === "paidLast30"
+                      ? "bg-logica-purple/90 text-white shadow"
+                      : "text-logica-purple hover:bg-logica-light-lilac/60"
+                  )}
+                >
+                  Pagas (30d)
+                </button>
+              </div>
               <span className="rounded-full bg-logica-light-lilac/60 px-3 py-1 shadow-inner">
                 Exibindo {nextInstallments.length} de {scheduleSource.length} lançamentos
               </span>
               <span className="rounded-full bg-white/80 px-3 py-1 shadow-inner">
-                {periodFilteredInstallments.length > 0 ? "Próximos 30 dias" : "Período padrão"}
+                {scheduleView === "paidLast30"
+                  ? "Pagas nos últimos 30 dias"
+                  : periodFilteredInstallments.length > 0
+                    ? "Próximos 30 dias"
+                    : "Período padrão"}
               </span>
             </div>
           </div>
@@ -594,7 +658,16 @@ export function Dashboard({
                         ? `Consórcio ${relatedConsortium.administrator}`
                         : "Consórcio";
                   const contractOrigin = installment.contractType === "loan" ? "Empréstimo" : "Consórcio";
-                  const statusLabel = installment.status === "pendente" ? "Pendente" : "Agendado";
+                  const statusLabel =
+                    installment.status === "pendente"
+                      ? "Pendente"
+                      : installment.status === "paga"
+                        ? "Paga"
+                        : "Agendado";
+                  const statusClasses =
+                    installment.status === "paga"
+                      ? "bg-emerald-50 text-emerald-700 ring-1 ring-emerald-100"
+                      : "bg-white/70 text-logica-purple";
 
                   return (
                     <tr key={installment.id} className="border-t border-logica-light-lilac/60">
@@ -607,7 +680,7 @@ export function Dashboard({
                         {formatCurrency(installment.value)}
                       </td>
                       <td className="px-4 py-3 text-right">
-                        <span className="rounded-full bg-white/70 px-3 py-1 text-xs font-semibold text-logica-purple">
+                        <span className={`rounded-full px-3 py-1 text-xs font-semibold ${statusClasses}`}>
                           {statusLabel}
                         </span>
                       </td>
