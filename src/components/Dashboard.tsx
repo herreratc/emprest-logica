@@ -272,11 +272,11 @@ export function Dashboard({
   }, [referenceDate]);
 
   const currentMonthStart = useMemo(() => {
-    const start = new Date(referenceDate);
+    const start = new Date();
     start.setDate(1);
     start.setHours(0, 0, 0, 0);
     return start;
-  }, [referenceDate]);
+  }, []);
 
   const currentMonthEnd = useMemo(() => {
     const end = new Date(currentMonthStart);
