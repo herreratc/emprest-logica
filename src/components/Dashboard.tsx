@@ -1,5 +1,5 @@
 import { clsx } from "clsx";
-import { ReactNode, useMemo, useState } from "react";
+import React, { ReactNode, useMemo, useState } from "react";
 import type { Company, Consortium, Installment, Loan } from "../data/mockData";
 import { formatCurrency } from "../utils/formatters";
 import CompanySelect from "./CompanySelect";
